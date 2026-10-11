@@ -38,14 +38,14 @@ An LLM that scores medical criteria will happily invent a sentence that sounds l
 
 ```mermaid
 flowchart TD
-    Q[Model returns a quote\nwith char_start and char_end] --> V{note.slice(start, end)\nequals the quote?}
-    V -- no --> R[Rejected\ncriterion becomes unclear\nevent: evidence.quote_rejected]
-    V -- yes --> C{Criterion has a\nnumeric threshold?}
-    C -- no --> M[Accepted, badge: quote verified]
-    C -- yes --> K[Code recomputes the value\nfrom dates and numbers in the note]
-    K --> T{Matches the\nmodel's status?}
-    T -- yes --> M2[Accepted, badge: rule check passed]
-    T -- no --> X[Status overridden by code\nevent: verifier mismatch, becomes a lesson]
+    Q["Model returns a quote with char_start and char_end"] --> V{"Is the quote exactly the text at that range in the note?"}
+    V -- no --> R["Rejected. Criterion becomes unclear. Event: evidence.quote_rejected"]
+    V -- yes --> C{"Does the criterion have a numeric threshold?"}
+    C -- no --> M["Accepted. Badge: quote verified"]
+    C -- yes --> K["Code recomputes the value from dates and numbers in the note"]
+    K --> T{"Does it match the model status?"}
+    T -- yes --> M2["Accepted. Badge: rule check passed"]
+    T -- no --> X["Status overridden by code. Event: verifier mismatch, becomes a lesson"]
 ```
 
 In the UI each criterion row shows "quote verified" and "rule check passed" badges, and the quote is highlighted in the note at the exact character range.
@@ -111,12 +111,12 @@ This is the piece that makes it more than a one shot demo. Four kinds of mistake
 
 ```mermaid
 flowchart LR
-    L[Ledger events] --> T[Lessons table\nper policy and criterion]
-    T --> P[Top 5 lessons injected\ninto the scoring prompt]
-    T --> S[Rules injected\ninto the call script]
-    P --> E[lessons.applied\nevent on the timeline]
-    T --> K[Keewano\noverride rate with vs without lessons]
-    T --> W[Claude writes\n"What I learned"]
+    L["Ledger events"] --> T["Lessons table, per policy and criterion"]
+    T --> P["Top 5 lessons injected into the scoring prompt"]
+    T --> S["Rules injected into the call script"]
+    P --> E["lessons.applied event on the timeline"]
+    T --> K["Keewano: override rate with vs without lessons"]
+    T --> W["Claude writes a What I learned note"]
 ```
 
 The first version of a lesson said "look harder for therapy duration". That pushed the model to guess the criterion was met. The code verifier caught it and downgraded it. I rewrote the lesson wording to forbid inference, and on the next case the model got it right by itself. So the loop learns, and the verifier keeps learned pressure from turning into guessing. The honest gap: criteria with no numeric check have no verifier backstop yet.
