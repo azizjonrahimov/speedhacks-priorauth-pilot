@@ -1,8 +1,65 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Clock, FilePlus2, LayoutDashboard, ListChecks, Moon, Presentation, Stethoscope, Sun, Wifi, WifiOff } from 'lucide-react'
+import { Clock, FilePlus2, LayoutDashboard, ListChecks, LogOut, Moon, Presentation, Stethoscope, Sun, Wifi, WifiOff } from 'lucide-react'
+import { signOut, useDemoUser } from '@/lib/auth'
+import { useTitle } from '@/hooks/useTitle'
+
+function routeTitle(path: string): string {
+  if (path === '/app') return 'Dashboard'
+  if (path === '/cases') return 'Cases'
+  if (path === '/new') return 'New case'
+  if (path.startsWith('/cases/')) return `Case ${path.split('/')[2] ?? ''}`
+  return ''
+}
+
+function UserMenu() {
+  const user = useDemoUser()
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  if (!user) return null
+  const initials = user.name
+    .split(/\s+/)
+    .map((p) => p[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="hover:bg-muted flex w-full items-center gap-2.5 rounded-md p-1.5 text-left transition-colors"
+        aria-expanded={open}
+      >
+        <span className="bg-primary/15 text-primary flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">{initials}</span>
+        <span className="min-w-0 leading-tight">
+          <span className="block truncate text-[13px] font-medium">{user.name}</span>
+          <span className="text-muted-foreground block truncate text-[11px]">{user.org}</span>
+        </span>
+      </button>
+      {open && (
+        <div className="bg-popover text-popover-foreground absolute bottom-full left-0 z-40 mb-1 w-full rounded-lg p-1 shadow-lg ring-1 ring-slate-900/10 dark:ring-white/10">
+          <div className="text-muted-foreground truncate px-2 py-1.5 text-[11px]">{user.email}</div>
+          <Link to="/" className="hover:bg-muted block rounded-md px-2 py-1.5 text-sm" onClick={() => setOpen(false)}>
+            Website
+          </Link>
+          <button
+            type="button"
+            className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+            onClick={() => {
+              signOut()
+              navigate('/signin', { replace: true })
+            }}
+          >
+            <LogOut className="size-3.5" /> Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 import { onStreamEvent, useStream } from '@/hooks/useStream'
 import { queryKeys, USE_MOCK } from '@/api/client'
 import type { CaseSummary } from '@/api/types'
@@ -11,7 +68,7 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 const NAV = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/cases', label: 'Cases', icon: ListChecks, end: false },
   { to: '/new', label: 'New case', icon: FilePlus2, end: false },
 ]
@@ -37,6 +94,8 @@ function useHtmlClass(cls: string, key: string, initial = false) {
 
 export function AppShell() {
   const status = useStream()
+  const loc = useLocation()
+  useTitle(routeTitle(loc.pathname) || undefined)
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [dark, setDark] = useHtmlClass('dark', 'pap.dark')
@@ -94,7 +153,7 @@ export function AppShell() {
   return (
     <div className="bg-background flex min-h-svh">
       <aside className="no-print bg-sidebar text-sidebar-foreground border-sidebar-border sticky top-0 flex h-svh w-60 shrink-0 flex-col border-r">
-        <div className="flex h-14 items-center gap-2.5 px-4">
+        <Link to="/app" className="flex h-14 items-center gap-2.5 px-4">
           <span className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg">
             <Stethoscope className="size-4.5" />
           </span>
@@ -102,7 +161,7 @@ export function AppShell() {
             <div className="text-[15px] font-semibold tracking-tight">PriorAuth Pilot</div>
             <div className="text-muted-foreground text-[11px]">Prior-auth copilot</div>
           </div>
-        </div>
+        </Link>
         <nav className="mt-2 flex flex-col gap-0.5 px-2">
           {NAV.map((n) => (
             <NavLink
@@ -153,6 +212,9 @@ export function AppShell() {
               </TooltipTrigger>
               <TooltipContent>Larger type for the recording</TooltipContent>
             </Tooltip>
+          </div>
+          <div className="border-t pt-3">
+            <UserMenu />
           </div>
         </div>
       </aside>

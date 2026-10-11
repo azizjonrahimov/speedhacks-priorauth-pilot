@@ -93,7 +93,7 @@ export function CaseView() {
       <div className="p-8">
         <p className="text-destructive text-sm">Could not load case: {(q.error as Error).message}</p>
         <Button variant="outline" asChild className="mt-3">
-          <Link to="/">
+          <Link to="/app">
             <ArrowLeft data-icon="inline-start" /> Back to dashboard
           </Link>
         </Button>
@@ -107,7 +107,7 @@ export function CaseView() {
       <header className="no-print bg-card/80 sticky top-0 z-10 border-b backdrop-blur">
         <div className="flex h-14 items-center gap-4 px-5">
           <Button variant="ghost" size="icon-sm" asChild>
-            <Link to="/" aria-label="Back">
+            <Link to="/app" aria-label="Back">
               <ArrowLeft />
             </Link>
           </Button>
