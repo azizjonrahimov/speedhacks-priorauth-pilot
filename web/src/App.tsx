@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppShell } from '@/components/layout/AppShell'
 import { Dashboard } from '@/pages/Dashboard'
 import { Cases } from '@/pages/Cases'
+import { NewCase } from '@/pages/NewCase'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5_000, retry: 1, refetchOnWindowFocus: false } },
@@ -28,7 +29,7 @@ export default function App() {
             <Route element={<AppShell />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/cases" element={<Cases />} />
-              <Route path="/new" element={<Placeholder name="New case" />} />
+              <Route path="/new" element={<NewCase />} />
               <Route path="/cases/:id" element={<Placeholder name="Case view" />} />
             </Route>
           </Routes>
