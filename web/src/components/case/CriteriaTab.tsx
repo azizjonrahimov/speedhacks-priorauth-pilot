@@ -173,7 +173,7 @@ function CriterionRow({
           ) : (
             k.question_if_missing && <p className="text-muted-foreground mt-1.5 text-[12.5px] italic">Will ask: “{k.question_if_missing}”</p>
           )}
-          <div className="mt-2 flex items-center gap-3">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 [&>*]:whitespace-nowrap">
             <div className="bg-muted h-1.5 w-28 overflow-hidden rounded-full">
               <motion.div className={cn('h-full rounded-full', BAR[chipStatus] ?? BAR.not_applicable)} initial={{ width: 0 }} animate={{ width: `${Math.round(k.confidence * 100)}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
             </div>
