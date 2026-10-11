@@ -33,10 +33,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const { mockFetch } = await import('@/mock/server')
     return mockFetch<T>(path, init)
   }
-  const res = await fetch(API_URL + path, {
-    ...init,
-    headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
-  })
+  // Only declare a JSON body when there is one: Fastify rejects an empty body with a JSON content-type.
+  const headers: Record<string, string> = { accept: 'application/json', ...((init?.headers as Record<string, string>) ?? {}) }
+  if (init?.body != null) headers['content-type'] = 'application/json'
+  const res = await fetch(API_URL + path, { ...init, headers })
   if (!res.ok) {
     let message = `${res.status} ${res.statusText}`
     let code: string | undefined

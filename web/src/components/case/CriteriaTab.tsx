@@ -138,7 +138,7 @@ export function CriteriaTab({
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-[13px] font-semibold">
-              {policy ? `${policy.insurer} · ${policy.id}` : 'Policy'}{' '}
+              {policy ? (policy.id.toLowerCase().startsWith(policy.insurer.toLowerCase()) ? policy.id : `${policy.insurer} · ${policy.id}`) : 'Policy'}{' '}
               {policy?.url && (
                 <a href={policy.url} target="_blank" rel="noreferrer" className="text-primary ml-1 inline-flex items-center gap-1 text-xs font-medium hover:underline">
                   policy text <ExternalLink className="size-3" />

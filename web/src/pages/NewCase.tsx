@@ -220,7 +220,7 @@ export function NewCase() {
                   <div className="min-w-0">
                     <div className="text-base font-semibold">{result.screen.pa_required ? 'PA REQUIRED' : 'No PA required'}</div>
                     <div className="text-muted-foreground text-sm">
-                      {result.screen.policy.insurer} {result.screen.policy.id} · {result.screen.policy.label}
+                      {result.screen.policy.id.toLowerCase().startsWith(result.screen.policy.insurer.toLowerCase()) ? result.screen.policy.id : `${result.screen.policy.insurer} ${result.screen.policy.id}`} · {result.screen.policy.label}
                     </div>
                     <a href={result.screen.policy.url} target="_blank" rel="noreferrer" className="text-primary mt-1 inline-flex items-center gap-1 text-xs hover:underline">
                       View policy <ExternalLink className="size-3" />
