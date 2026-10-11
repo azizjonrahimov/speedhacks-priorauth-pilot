@@ -21,7 +21,8 @@ export async function mockFetch<T>(path: string, init?: RequestInit): Promise<T>
   const url = new URL(path, 'http://mock.local')
   const parts = url.pathname.split('/').filter(Boolean)
   try {
-    return (await route(method, parts, parse(init))) as T
+    // Clone like a real JSON round-trip would, so react-query sees new references after in-place store mutations.
+    return structuredClone(await route(method, parts, parse(init))) as T
   } catch (e) {
     if (e instanceof store.MockHttpError) throw new HttpError(e.status, e.message, e.code)
     throw e

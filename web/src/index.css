@@ -161,3 +161,15 @@
   .no-print { display: none !important; }
   body { background: white; }
 }
+
+@keyframes note-flash {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 55%, transparent); }
+  100% { box-shadow: 0 0 0 10px transparent; }
+}
+.note-flash { animation: note-flash 1.2s ease-out 1; }
+
+@media print {
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area { position: absolute; inset: 0; padding: 1in; font-size: 12pt; }
+}

@@ -150,6 +150,40 @@ export function screen(id: string, at?: string) {
   return { pa_required: p.pa_required, policy, red_flags, expedited }
 }
 
+/** Code-level check of numeric thresholds against the number found in the quote (mirrors the backend verifier). */
+function deterministicCheck(def: CriterionDef, quote: string | null): Criterion['verifier']['deterministic_check'] {
+  if (!quote) return null
+  const num = quote.match(/\d+(\.\d+)?/)
+  const n = num ? Number(num[0]) : null
+  const p = def.params as Record<string, number | undefined>
+  switch (def.kind) {
+    case 'conservative_therapy_duration': {
+      const min = p.min_weeks ?? p.min_months
+      const unit = p.min_weeks != null ? 'weeks' : 'months'
+      if (n == null || min == null) return null
+      return { passed: n >= min, detail: `${n} ${unit} documented ≥ ${min} ${unit} required` }
+    }
+    case 'bmi_threshold': {
+      if (n == null) return null
+      if (p.max_bmi != null) return { passed: n < p.max_bmi, detail: `BMI ${n} < ${p.max_bmi} required` }
+      const min = p.min_bmi_with_comorbidity ?? p.min_bmi
+      return { passed: n >= (min ?? 0), detail: `BMI ${n} ≥ ${min} required (with comorbidity)` }
+    }
+    case 'age_threshold':
+      if (n == null || p.min_age == null) return null
+      return { passed: n >= p.min_age, detail: `Age ${n} ≥ ${p.min_age} required` }
+    case 'symptom':
+      if (n != null && p.min_weeks != null) return { passed: n >= p.min_weeks, detail: `${n} weeks ≥ ${p.min_weeks} weeks required` }
+      if (n != null && p.min_epworth != null) return { passed: n >= p.min_epworth, detail: `Epworth ${n} ≥ ${p.min_epworth} required` }
+      return null
+    case 'lab_or_imaging_done':
+      if (n != null && p.min_kl_grade != null) return { passed: n >= p.min_kl_grade, detail: `KL grade ${n} ≥ ${p.min_kl_grade} required` }
+      return null
+    default:
+      return null
+  }
+}
+
 function scoreCriterion(def: CriterionDef, note: string): Criterion {
   const quote = def.quotes.find((q) => note.includes(q))
   const unclear = quote ? undefined : def.unclearQuotes?.find((q) => note.includes(q))
@@ -194,10 +228,7 @@ function scoreCriterion(def: CriterionDef, note: string): Criterion {
     question_if_missing: status === 'met' || status === 'not_applicable' ? null : def.question,
     verifier: {
       quote_verified: !!ev,
-      deterministic_check:
-        def.kind === 'conservative_therapy_duration' && quote
-          ? { passed: true, detail: `Documented duration meets min ${JSON.stringify(def.params)}` }
-          : null,
+      deterministic_check: deterministicCheck(def, quote ?? null),
     },
   }
 }

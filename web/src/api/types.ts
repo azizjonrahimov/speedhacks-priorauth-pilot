@@ -313,6 +313,7 @@ export interface ScoreResult {
   overall: Overall
   red_flags: string[]
   facts: Fact[]
+  expedited?: boolean
 }
 
 export interface ManualGapfillResult {

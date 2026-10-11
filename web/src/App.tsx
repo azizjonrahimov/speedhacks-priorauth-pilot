@@ -6,19 +6,11 @@ import { AppShell } from '@/components/layout/AppShell'
 import { Dashboard } from '@/pages/Dashboard'
 import { Cases } from '@/pages/Cases'
 import { NewCase } from '@/pages/NewCase'
+import { CaseView } from '@/pages/CaseView'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5_000, retry: 1, refetchOnWindowFocus: false } },
 })
-
-function Placeholder({ name }: { name: string }) {
-  return (
-    <div className="p-8">
-      <h1 className="text-xl font-semibold tracking-tight">{name}</h1>
-      <p className="text-muted-foreground mt-1 text-sm">Coming up next.</p>
-    </div>
-  )
-}
 
 export default function App() {
   return (
@@ -30,11 +22,11 @@ export default function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/cases" element={<Cases />} />
               <Route path="/new" element={<NewCase />} />
-              <Route path="/cases/:id" element={<Placeholder name="Case view" />} />
+              <Route path="/cases/:id" element={<CaseView />} />
             </Route>
           </Routes>
         </BrowserRouter>
-        <Toaster richColors position="top-right" closeButton />
+        <Toaster richColors position="bottom-right" closeButton duration={3500} />
       </TooltipProvider>
     </QueryClientProvider>
   )
