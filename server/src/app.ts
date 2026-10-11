@@ -10,9 +10,13 @@ import { redactValue } from "./util/redact.js";
 import { registerCaseRoutes } from "./routes/cases.js";
 import { registerMiscRoutes } from "./routes/misc.js";
 import { registerEvidenceRoutes } from "./routes/evidence.js";
+import { registerGapfillRoutes } from "./routes/gapfill.js";
+import { registerPacketRoutes } from "./routes/packet.js";
+import { DialService } from "./gapfill/dial.js";
 
 export interface AppContext {
   ledger: Ledger;
+  dial: DialService;
 }
 
 export async function buildApp(opts: { dbPath?: string; logger?: boolean } = {}): Promise<FastifyInstance & { ctx: AppContext }> {
@@ -33,7 +37,8 @@ export async function buildApp(opts: { dbPath?: string; logger?: boolean } = {})
   });
 
   const ledger = new Ledger(opts.dbPath ?? config.dbPath);
-  const ctx: AppContext = { ledger };
+  const dial = new DialService(app.log);
+  const ctx: AppContext = { ledger, dial };
   (app as unknown as { ctx: AppContext }).ctx = ctx;
 
   await app.register(cors, { origin: config.corsOrigins, methods: ["GET", "POST", "OPTIONS"] });
@@ -54,7 +59,13 @@ export async function buildApp(opts: { dbPath?: string; logger?: boolean } = {})
   registerMiscRoutes(app, ctx);
   registerCaseRoutes(app, ctx);
   registerEvidenceRoutes(app, ctx);
+  registerGapfillRoutes(app, ctx);
+  registerPacketRoutes(app, ctx);
 
-  app.addHook("onClose", async () => ledger.close());
+  if (opts.logger !== false) void dial.listen();
+  app.addHook("onClose", async () => {
+    dial.stop();
+    ledger.close();
+  });
   return app as unknown as FastifyInstance & { ctx: AppContext };
 }
