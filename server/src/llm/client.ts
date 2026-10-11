@@ -25,7 +25,10 @@ export interface StructuredCall<T> {
 }
 
 /** Test seam: replace structured() without touching the network. */
-export const llmHooks: { structured?: <T>(call: StructuredCall<T>) => Promise<StructuredResult<T>> } = {};
+export const llmHooks: {
+  structured?: <T>(call: StructuredCall<T>) => Promise<StructuredResult<T>>;
+  completeText?: (system: string, user: string) => Promise<string>;
+} = {};
 
 export interface StructuredResult<T> {
   data: T;
@@ -129,6 +132,7 @@ export function upstreamError(status: number, msg: string): AppError {
 
 /** Plain-text completion (used for the medical-necessity letter). */
 export async function completeText(system: string, user: string, maxTokens = 3000): Promise<string> {
+  if (llmHooks.completeText) return llmHooks.completeText(system, user);
   const anthropic = getClient();
   let res: Anthropic.Message;
   try {

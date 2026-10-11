@@ -237,6 +237,43 @@ describe("5. learning metric", () => {
   });
 });
 
+describe("6. what I learned", () => {
+  it("summarizes only the PHI-free lessons with Claude, caches it, and regenerates when lessons change", async () => {
+    const prompts: string[] = [];
+    llmHooks.completeText = async (_system, user) => {
+      prompts.push(user);
+      return "I have learned 2 lessons. - Aetna CPB 0171 / aetna-73721-c2: reviewers corrected under-calling; scoring now looks harder for therapy duration.";
+    };
+    try {
+      const r1 = (await app.inject({ method: "GET", url: "/lessons/summary" })).json().summary;
+      expect(r1).toMatchObject({ generator: "llm", stale: false });
+      expect(r1.text).toMatch(/I have learned/);
+      expect(prompts).toHaveLength(1);
+      expect(prompts[0]).toMatch(/aetna-73721-c2/);
+      expect(prompts[0]).not.toMatch(/Marcus|Lindqvist|Bayview|Raman|ibuprofen/); // only templated lessons reach the model
+      // cached while lessons are unchanged
+      await app.inject({ method: "GET", url: "/lessons/summary" });
+      expect(prompts).toHaveLength(1);
+      // new lesson → stale → regenerated
+      const { id } = await newScoredCase();
+      await app.inject({ method: "POST", url: `/cases/${id}/criteria/aetna-73721-c1/override`, payload: { status: "unclear", reason: "swelling not documented as persistent" } });
+      await tick();
+      const r3 = (await app.inject({ method: "GET", url: "/lessons/summary" })).json().summary;
+      expect(prompts).toHaveLength(2);
+      expect(r3.lessons_count).toBe(app.ctx.lessons.count());
+      // LLM failure → template, never an error
+      llmHooks.completeText = async () => {
+        throw new Error("boom");
+      };
+      const r4 = (await app.inject({ method: "GET", url: "/lessons/summary?refresh=1" })).json().summary;
+      expect(r4.generator).toBe("template");
+      expect(r4.text).toMatch(/lessons recorded/);
+    } finally {
+      delete llmHooks.completeText;
+    }
+  });
+});
+
 describe("4b. call script", () => {
   it("buildCallScript without lessons is unchanged", () => {
     const c = app.ctx.ledger.requireCase(app.ctx.ledger.listCases()[0].id);

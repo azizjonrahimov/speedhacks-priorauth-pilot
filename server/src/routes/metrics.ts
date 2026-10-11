@@ -3,6 +3,7 @@ import type { AppContext } from "../app.js";
 import { canTransition } from "../domain/stateMachine.js";
 import { AppError } from "../domain/types.js";
 import { learningFrom, localLearningCounts } from "../learning/metric.js";
+import { LessonsSummarizer } from "../learning/summary.js";
 
 export const BASELINE_MINUTES = 24;
 export const BASELINE_SOURCE = "CAQH Index: ~24 minutes of staff time per manual prior authorization; AMA 2023 survey: 40 PAs/physician/week, ~13 hours/week.";
@@ -60,6 +61,16 @@ export function registerMetricsRoutes(app: FastifyInstance, ctx: AppContext) {
   const { ledger } = ctx;
   app.get("/metrics", async () => computeMetrics(ctx));
   // Force a Keewano refresh (demo button); returns the new insight state. Never blocks /metrics itself.
+  // "What I learned": Claude-written self-review of the lessons table (PHI-free input), cached; regenerated
+  // when lessons change, after 24 h, or on ?refresh=1. The daily job is scripts/self-review.ts.
+  const summarizer = new LessonsSummarizer(ledger.db, ctx.lessons);
+  app.get<{ Querystring: { refresh?: string } }>("/lessons/summary", async (req) => {
+    const cached = summarizer.cached();
+    if (cached && !cached.stale && req.query.refresh !== "1") return { summary: cached };
+    const learning = computeMetrics(ctx).keewano.learning;
+    return { summary: await summarizer.generate(learning, req.log) };
+  });
+
   app.post("/keewano/refresh", async () => {
     await ctx.keewano.insights.refreshAll();
     return { insights: ctx.keewano.insights.state, ingest: ctx.keewano.sink.stats };
