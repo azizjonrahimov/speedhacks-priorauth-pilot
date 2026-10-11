@@ -32,6 +32,18 @@ function isPlain(o: object) {
   return p === null || p === Object.prototype;
 }
 
+/**
+ * pino `formatters.log` hook: redact plain values, but pass top-level non-plain objects
+ * (Fastify req/res, Error) through untouched so pino's serializers still see the real object.
+ */
+export function redactLogObject(o: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(o)) {
+    out[k] = v && typeof v === "object" && !Array.isArray(v) && !isPlain(v) && !(v instanceof Error) ? v : redactValue(v);
+  }
+  return out;
+}
+
 /** Deep-redact a log object. Cycle-safe, depth-limited, and skips non-plain objects (sockets, streams, errors). */
 export function redactValue<T>(v: T, depth = 0, seen: WeakSet<object> = new WeakSet()): T {
   if (typeof v === "string") return redactText(v) as T;

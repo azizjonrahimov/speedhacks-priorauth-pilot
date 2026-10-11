@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 import { config } from "./config.js";
 import { Ledger } from "./db/ledger.js";
 import { AppError } from "./domain/types.js";
-import { redactValue } from "./util/redact.js";
+import { redactLogObject } from "./util/redact.js";
 import { registerCaseRoutes } from "./routes/cases.js";
 import { registerMiscRoutes } from "./routes/misc.js";
 import { registerEvidenceRoutes } from "./routes/evidence.js";
@@ -30,7 +30,7 @@ export async function buildApp(opts: { dbPath?: string; logger?: boolean } = {})
         : {
             level: config.logLevel,
             // PHI hygiene: every log object passes through the redaction wrapper.
-            formatters: { log: (o) => redactValue(o) as Record<string, unknown> },
+            formatters: { log: (o) => redactLogObject(o) },
             redact: { paths: ["req.headers.authorization", "*.apiKey", "*.api_key"], censor: "[redacted]" },
             serializers: {
               req: (r) => ({ method: r.method, url: r.url }),
