@@ -31,7 +31,7 @@ Rules:
 - evidence_quote MUST be a verbatim substring of the note (or of a fact whose source is phone_call/manual). Never paraphrase. If unsure, choose a shorter quote that you are certain appears verbatim.
 - A negated fact (negated=true) does NOT satisfy a criterion; for red-flag criteria, a negated fact means the red flag is absent → status "missing" (that is good news for the patient).
 - Red-flag criteria are "met" only when the note affirmatively documents the red flag.
-- question_if_missing: for missing/unclear criteria, write ONE spoken-language question for a phone call to the ordering physician that would resolve it, specific to this patient (mention the relevant therapy/finding). Otherwise null.
+- question_if_missing: for missing/unclear criteria, write ONE spoken-language question for a phone call to the ordering physician that would resolve it, specific to this case (mention the relevant therapy/finding). Refer to the patient as "the patient" or "he/she", never by name or title. Otherwise null.
 - Be strict about numbers: if a criterion requires N weeks and the note documents fewer or none, do not mark it met.
 - Return exactly one entry per criterion id, in the same order.`;
 
