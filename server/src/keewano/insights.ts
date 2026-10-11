@@ -3,25 +3,20 @@
 import type { KeewanoQueryClient } from "./query.js";
 import { rowObject } from "./query.js";
 
-// Columns are step functions held forward in time, so pin the median to the moment each review
-// happened (first occurrence per case); count cases with/without a call via FILTER.
-export const INSIGHTS_SQL = `SELECT
-  percentile_cont(0.5) WITHIN GROUP (ORDER BY "PA Review Seconds") FILTER (WHERE occurrence("PA Review Seconds") = 1) AS median_review_s,
-  count(DISTINCT user_id) FILTER (WHERE "PA Review Seconds" IS NOT NULL) AS cases_reviewed,
+// Keewano SQL facts (verified live 2026-10-11): FILTER only works on count/sum/avg/min/max/variance/stddev,
+// and IS NULL is unsupported. Columns are step functions held forward, so the median is pinned to the moment
+// each review happened (first occurrence per case). Hence two statements.
+export const MEDIAN_SQL = `SELECT
+  percentile_cont(0.5) WITHIN GROUP (ORDER BY "PA Review Seconds") AS median_review_s,
+  count(DISTINCT user_id) AS cases_reviewed
+FROM events
+WHERE occurrence("PA Review Seconds") = 1`;
+
+export const COUNTS_SQL = `SELECT
   count(DISTINCT user_id) FILTER (WHERE "PA Call Placed" IS NOT NULL) AS cases_with_call,
   count(DISTINCT user_id) FILTER (WHERE "PA Score Overall" IS NOT NULL) AS cases_scored,
   count(DISTINCT user_id) FILTER (WHERE "PA Data Origin" = 'synthetic') AS synthetic_cases
 FROM events`;
-
-// Fallback without FILTER on the percentile, in case the engine rejects that combination.
-export const INSIGHTS_SQL_SIMPLE = `SELECT
-  percentile_cont(0.5) WITHIN GROUP (ORDER BY "PA Review Seconds") AS median_review_s,
-  count(DISTINCT user_id) FILTER (WHERE "PA Review Seconds" IS NOT NULL) AS cases_reviewed,
-  count(DISTINCT user_id) FILTER (WHERE "PA Call Placed" IS NOT NULL) AS cases_with_call,
-  count(DISTINCT user_id) FILTER (WHERE "PA Score Overall" IS NOT NULL) AS cases_scored,
-  count(DISTINCT user_id) FILTER (WHERE "PA Data Origin" = 'synthetic') AS synthetic_cases
-FROM events
-WHERE occurrence("PA Review Seconds") = 1 OR "PA Review Seconds" IS NULL`;
 
 export interface KeewanoInsight {
   median_review_seconds: number | null;
@@ -49,7 +44,6 @@ export class KeewanoInsights {
   readonly state: InsightsState;
   private timer: NodeJS.Timeout | null = null;
   private inflight: Promise<void> | null = null;
-  private useSimple = false;
 
   constructor(
     private client: KeewanoQueryClient,
@@ -76,42 +70,36 @@ export class KeewanoInsights {
     if (this.inflight) return this.inflight;
     this.inflight = (async () => {
       this.state.last_attempt = new Date().toISOString();
+      const query = `${MEDIAN_SQL};\n${COUNTS_SQL}`;
       try {
-        let r;
+        let med: Record<string, unknown>;
+        let cnt: Record<string, unknown>;
         try {
-          try {
-            r = await this.client.sql(this.useSimple ? INSIGHTS_SQL_SIMPLE : INSIGHTS_SQL, 1);
-          } catch (e) {
-            if (this.useSimple || /unknown column/i.test(String((e as Error).message))) throw e;
-            // engine rejected FILTER on the percentile: switch to the simpler form for good
-            this.useSimple = true;
-            r = await this.client.sql(INSIGHTS_SQL_SIMPLE, 1);
-          }
+          [med, cnt] = await Promise.all([this.client.sql(MEDIAN_SQL, 1).then((r) => rowObject(r)), this.client.sql(COUNTS_SQL, 1).then((r) => rowObject(r))]);
         } catch (e) {
-          // unknown column = our events were never ingested yet: report zeros, not an error
+          // unknown column = our custom events were never registered/ingested yet: report zeros, not an error
           if (/unknown column/i.test(String((e as Error).message))) {
-            this.state.data = { median_review_seconds: null, cases_reviewed: 0, cases_scored: 0, cases_with_call: 0, call_share: null, synthetic_cases: 0, as_of: new Date().toISOString(), query: this.useSimple ? INSIGHTS_SQL_SIMPLE : INSIGHTS_SQL };
+            this.state.data = { median_review_seconds: null, cases_reviewed: 0, cases_scored: 0, cases_with_call: 0, call_share: null, synthetic_cases: 0, as_of: new Date().toISOString(), query };
             this.state.status = "ok";
             this.state.error = "no PriorAuth events in Keewano yet";
             return;
           }
           throw e;
         }
-        const o = rowObject(r);
-        const scored = num(o.cases_scored) ?? 0;
-        const withCall = num(o.cases_with_call) ?? 0;
+        const scored = num(cnt.cases_scored) ?? 0;
+        const withCall = num(cnt.cases_with_call) ?? 0;
         this.state.data = {
-          median_review_seconds: num(o.median_review_s),
-          cases_reviewed: num(o.cases_reviewed) ?? 0,
+          median_review_seconds: num(med.median_review_s),
+          cases_reviewed: num(med.cases_reviewed) ?? 0,
           cases_scored: scored,
-          synthetic_cases: num(o.synthetic_cases) ?? 0,
           cases_with_call: withCall,
           call_share: scored > 0 ? Math.round((withCall / scored) * 1000) / 1000 : null,
+          synthetic_cases: num(cnt.synthetic_cases) ?? 0,
           as_of: new Date().toISOString(),
-          query: this.useSimple ? INSIGHTS_SQL_SIMPLE : INSIGHTS_SQL,
+          query,
         };
         this.state.status = "ok";
-        this.state.error = null;
+        this.state.error = scored === 0 ? "no PriorAuth events in Keewano yet" : null;
       } catch (e) {
         this.state.status = this.state.data ? "ok" : "error"; // keep serving the last good answer
         this.state.error = String((e as Error).message).slice(0, 200);

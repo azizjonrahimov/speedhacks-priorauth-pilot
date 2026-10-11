@@ -126,12 +126,18 @@ describe("keewano sink", () => {
 });
 
 describe("keewano insights", () => {
-  const fakeMcp = (rows: unknown[][], columns = ["median_review_s", "cases_reviewed", "cases_with_call", "cases_scored"], fail?: string): McpFetch => async (body: any) => {
+  // rows given as [median, cases_reviewed, cases_with_call, cases_scored]; answers the median and counts statements separately
+  const fakeMcp = (rows: unknown[][], _columns?: string[], fail?: string): McpFetch => async (body: any) => {
     if (body.method === "initialize") return { status: 200, json: { result: { serverInfo: { name: "keewano-mcp" } } } };
     if (body.method === "notifications/initialized") return { status: 202, json: null };
     if (body.params?.name === "list_projects") return { status: 200, json: { result: { content: [{ type: "text", text: "- SpeedHack (84af1714-b5e0-4b78-bc57-9e0c6b9b2587)" }] } } };
     if (fail) return { status: 200, json: { result: { content: [{ type: "text", text: fail }], isError: true } } };
-    return { status: 200, json: { result: { content: [], structuredContent: { columns: columns.map((name) => ({ name })), rows } } } };
+    const sql = String(body.params?.arguments?.sqlQuery ?? "");
+    const [m, rev, call, scored] = (rows[0] ?? [null, 0, 0, 0]) as number[];
+    const sc = /percentile_cont/.test(sql)
+      ? { columns: [{ name: "median_review_s" }, { name: "cases_reviewed" }], rows: [[m, rev]] }
+      : { columns: [{ name: "cases_with_call" }, { name: "cases_scored" }, { name: "synthetic_cases" }], rows: [[call, scored, 0]] };
+    return { status: 200, json: { result: { content: [], structuredContent: sc } } };
   };
 
   it("computes median and call share from Keewano and feeds /metrics minutes_saved", async () => {
