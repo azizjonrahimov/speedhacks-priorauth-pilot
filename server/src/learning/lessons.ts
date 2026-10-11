@@ -28,7 +28,7 @@ export function lessonSummary(kind: LessonKind, critText: string, direction: str
   switch (kind) {
     case "override":
       return direction === "under"
-        ? `Reviewers have marked "${c}" as MET when the model said missing/unclear. Look harder for supporting evidence: compute durations from start/end dates, accept clinically equivalent wording, and check phone/manual facts before calling it missing.`
+        ? `Reviewers have marked "${c}" as MET when the model said missing/unclear. Look harder for EXPLICIT supporting evidence: compute durations from stated start/end dates, accept clinically equivalent wording, and check phone/manual facts. Do NOT infer or estimate a value the note does not state; if the specific fact is absent, it stays unclear.`
         : `Reviewers have REJECTED "met" for "${c}". Require explicit, specific documentation (numbers, dates, named findings) before marking it met; vague mentions are "unclear".`;
     case "quote_rejected":
       return `For "${c}", the model has cited quotes that were not verbatim in the note. Copy evidence character for character from the note; if unsure, use a shorter exact phrase.`;

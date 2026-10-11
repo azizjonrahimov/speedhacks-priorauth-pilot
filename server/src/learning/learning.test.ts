@@ -123,6 +123,7 @@ describe("2. lessons memory", () => {
     const lesson = res.lessons.find((l: { kind: string }) => l.kind === "override");
     expect(lesson).toMatchObject({ policy_id: "Aetna CPB 0171", criterion_id: C2, direction: "under", count: 1 });
     expect(lesson.summary).toMatch(/MET when the model said missing\/unclear/);
+    expect(lesson.summary).toMatch(/Do NOT infer or estimate/); // live finding: an "under" lesson must not push the model to guess
     expect(lesson.summary).not.toMatch(/Marcus|Bayview|Lindqvist/);
     const before = app.ctx.lessons.list();
     app.ctx.lessons.rebuild();
