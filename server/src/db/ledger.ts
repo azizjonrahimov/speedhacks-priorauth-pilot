@@ -112,6 +112,7 @@ export class Ledger {
         state: c.state,
         overall: c.overall,
         expedited: c.expedited,
+        review_seconds: c.review?.review_seconds ?? null,
         created_at: c.created_at,
         updated_at: c.updated_at,
       };

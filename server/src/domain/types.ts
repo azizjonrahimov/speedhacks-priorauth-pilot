@@ -209,6 +209,7 @@ export interface CaseSummary {
   state: State;
   overall: Overall | null;
   expedited: boolean;
+  review_seconds: number | null;
   created_at: string;
   updated_at: string;
 }

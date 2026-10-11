@@ -25,6 +25,7 @@ function blank(id: string, at: string, input: CreateCaseInput, cptLabel: string)
     state: "intake",
     overall: null,
     expedited: false,
+    review_seconds: null,
     created_at: at,
     updated_at: at,
     note: input.note,
@@ -218,6 +219,7 @@ export function foldCase(events: LedgerEvent[]): CaseDetail | null {
         break;
       case "review.completed":
         c.review = { review_seconds: Number(p.review_seconds), completed_at: ev.at };
+        c.review_seconds = c.review.review_seconds;
         break;
       default:
         break;

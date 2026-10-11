@@ -94,6 +94,22 @@ describe("packet → submit (chaos) → review → metrics", () => {
     expect(rv.statusCode).toBe(200);
     expect(rv.json().review_seconds).toBeGreaterThanOrEqual(1);
 
+    const summary = (await app.inject({ method: "GET", url: "/cases" })).json().cases.find((s: { id: string }) => s.id === id);
+    expect(summary.review_seconds).toBe(rv.json().review_seconds);
+
+    if (detail.state === "pended") {
+      const inq = await app.inject({ method: "POST", url: `/cases/${id}/inquire` });
+      expect(inq.statusCode).toBe(200);
+      expect(inq.json()).toMatchObject({ changed: true, payer: { status: "approved", adjudication: "A1" } });
+    } else {
+      const inq = await app.inject({ method: "POST", url: `/cases/${id}/inquire` });
+      expect(inq.statusCode).toBe(409);
+    }
+    const closed = await app.inject({ method: "POST", url: `/cases/${id}/close` });
+    expect(closed.statusCode).toBe(200);
+    expect(closed.json().case.state).toBe("closed");
+    expect((await app.inject({ method: "POST", url: `/cases/${id}/close` })).statusCode).toBe(409);
+
     const m = (await app.inject({ method: "GET", url: "/metrics" })).json();
     expect(m.cases).toBe(1);
     expect(m.completed).toBe(1);
