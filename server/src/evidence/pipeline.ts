@@ -155,7 +155,10 @@ export async function rescoreWithFacts(c: CaseDetail, facts: Fact[], policy: Pol
   if (!pol) throw Object.assign(new Error(`no policy for ${c.insurer} ${c.cpt}`), { statusCode: 409, code: "no_policy" });
   const sc = await scoreCriteria(c.note, facts, pol.criteria, c.patient.dob, log);
   const ev = evaluate(sc.criteria, pol.pa_required);
-  const red_flags = Array.from(new Set([...(c.screening?.red_flags ?? []), ...ev.red_flags_met]));
+  // red_flags = short verbatim quotes only (keyword hits from screening + the evidence quote of each met red-flag criterion);
+  // the full criterion sentence already lives on the criterion row.
+  const metRedFlagQuotes = sc.criteria.filter((k) => k.group === "red_flag_any_of" && k.status === "met").map((k) => (k.evidence_quote ?? k.text.split(/[(.]/)[0]).trim());
+  const red_flags = Array.from(new Set([...(c.screening?.red_flags ?? []), ...metRedFlagQuotes].map((s) => s.trim()).filter(Boolean)));
   return {
     facts,
     criteria: sc.criteria,
