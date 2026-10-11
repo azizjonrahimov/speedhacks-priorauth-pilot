@@ -5,9 +5,14 @@ import type {
   CaseEvent,
   CaseSummary,
   CreateCaseBody,
+  Criterion,
+  CriterionOverrideStatus,
   DemoNote,
+  Lesson,
+  LessonsSummary,
   ManualGapfillResult,
   Metrics,
+  Overall,
   Packet,
   Payer,
   PolicyListItem,
@@ -77,6 +82,11 @@ export const api = {
   keewanoRefresh: () => post<{ insights?: { status?: string; error?: string | null } }>('/keewano/refresh'),
   policies: () => request<{ policies: PolicyListItem[] }>('/policies'),
   demoNotes: () => request<{ notes: DemoNote[] }>('/demo/notes'),
+  // Self-improvement loop (additive endpoints)
+  overrideCriterion: (id: string, criterionId: string, status: CriterionOverrideStatus, reason: string) =>
+    post<{ criterion: Criterion; overall: Overall; criteria: Criterion[] }>(`/cases/${id}/criteria/${encodeURIComponent(criterionId)}/override`, { status, reason }),
+  lessons: () => request<{ lessons: Lesson[]; total: number; total_occurrences: number }>('/lessons'),
+  lessonsSummary: (refresh = false) => request<{ summary: LessonsSummary }>(`/lessons/summary${refresh ? '?refresh=1' : ''}`),
 }
 
 export const queryKeys = {
@@ -86,4 +96,6 @@ export const queryKeys = {
   metrics: ['metrics'] as const,
   policies: ['policies'] as const,
   demoNotes: ['demoNotes'] as const,
+  lessons: ['lessons'] as const,
+  lessonsSummary: ['lessonsSummary'] as const,
 }

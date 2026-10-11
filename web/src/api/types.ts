@@ -291,7 +291,51 @@ export interface Metrics {
     synthetic_cases?: number | null
     as_of?: string | null
     note?: string | null
+    learning?: Learning | null
   } | null
+}
+
+// ---- Self-improvement loop (all optional-tolerant) ----
+
+export type CriterionOverrideStatus = 'met' | 'missing' | 'unclear' | 'not_applicable'
+
+export interface Learning {
+  source?: 'keewano' | 'local' | (string & {})
+  /** 0..1 share of scored cases a reviewer overrode */
+  override_rate?: number | null
+  lessons_count?: number | null
+  cases_scored?: number | null
+  cases_overridden?: number | null
+  cases_with_lessons?: number | null
+  overridden_with_lessons?: number | null
+  trend?: {
+    /** override rate on cases that had lessons applied */
+    with_lessons?: number | null
+    without_lessons?: number | null
+    direction?: 'improving' | 'worse' | 'flat' | 'insufficient_data' | (string & {})
+  } | null
+  note?: string | null
+}
+
+export interface Lesson {
+  id: string
+  policy_id: string
+  criterion_id: string | null
+  kind: 'override' | 'quote_rejected' | 'call_overstep' | 'verifier_mismatch' | (string & {})
+  direction: 'under' | 'over' | '-' | (string & {})
+  summary: string
+  count: number
+  first_seen: string
+  last_seen: string
+}
+
+export interface LessonsSummary {
+  text: string
+  generator: 'llm' | 'template' | (string & {})
+  generated_at: string
+  lessons_hash?: string
+  lessons_count: number
+  stale?: boolean
 }
 
 export interface PolicyListItem {

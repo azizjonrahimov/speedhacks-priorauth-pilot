@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Calculator, ChevronDown, ExternalLink, Loader2, PhoneCall, Quote, ShieldAlert, ShieldCheck, Siren } from 'lucide-react'
-import type { CaseDetail, Criterion } from '@/api/types'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { Calculator, ChevronDown, ExternalLink, Loader2, PenLine, PhoneCall, Quote, ShieldAlert, ShieldCheck, Siren, UserCheck } from 'lucide-react'
+import { api, queryKeys } from '@/api/client'
+import type { CaseDetail, Criterion, CriterionOverrideStatus } from '@/api/types'
 import { CriterionChip, OverallPill } from '@/components/StatusBadges'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -11,8 +14,108 @@ import { cn } from '@/lib/utils'
 
 const BAR: Record<string, string> = { met: 'bg-met', unclear: 'bg-unclear', missing: 'bg-missing', not_applicable: 'bg-slate-400' }
 
-function CriterionRow({ k, selected, onSelect, anyOfSatisfied }: { k: Criterion; selected: boolean; onSelect: () => void; anyOfSatisfied: boolean }) {
+interface OverrideInfo {
+  from: string
+  to: string
+  reason: string
+  at: string
+}
+
+const OVERRIDE_STATES = ['evidence_scored', 'needs_info', 'evidence_rescored', 'packet_ready']
+const OVERRIDE_CHOICES: { v: CriterionOverrideStatus; label: string }[] = [
+  { v: 'met', label: 'Met' },
+  { v: 'missing', label: 'Missing' },
+  { v: 'unclear', label: 'Unclear' },
+  { v: 'not_applicable', label: 'N/A' },
+]
+
+/** Reviewer correction. Feeds the backend's lessons loop; the reason stays in the case ledger only. */
+function OverrideForm({ caseId, k, onDone }: { caseId: string; k: Criterion; onDone: () => void }) {
+  const qc = useQueryClient()
+  const [status, setStatus] = useState<CriterionOverrideStatus | null>(null)
+  const [reason, setReason] = useState('')
+  const m = useMutation({
+    mutationFn: () => api.overrideCriterion(caseId, k.id, status!, reason.trim()),
+    onSuccess: (r) => {
+      toast.success('Override recorded', { description: `Overall is now ${String(r.overall).replace('_', ' ')}. The system will learn from this.` })
+      for (const key of [queryKeys.case(caseId), queryKeys.events(caseId), queryKeys.cases, queryKeys.metrics, queryKeys.lessons, queryKeys.lessonsSummary])
+        void qc.invalidateQueries({ queryKey: key })
+      onDone()
+    },
+    onError: (e: Error) => toast.error('Override failed', { description: e.message }),
+  })
+  const valid = !!status && status !== k.status && reason.trim().length >= 3
+  return (
+    <motion.form
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: 'auto', opacity: 1 }}
+      exit={{ height: 0, opacity: 0 }}
+      className="overflow-hidden"
+      onClick={(e) => e.stopPropagation()}
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (valid) m.mutate()
+      }}
+    >
+      <div className="bg-muted/50 mt-2 space-y-2 rounded-md p-3 ring-1 ring-slate-900/5 dark:ring-white/10">
+        <div className="text-[11.5px] font-semibold">Reviewer override</div>
+        <div className="flex flex-wrap gap-1">
+          {OVERRIDE_CHOICES.map((o) => (
+            <button
+              key={o.v}
+              type="button"
+              disabled={o.v === k.status}
+              onClick={() => setStatus(o.v)}
+              className={cn(
+                'h-7 rounded-md px-2.5 text-xs font-medium ring-1 ring-inset transition-colors disabled:opacity-40',
+                status === o.v ? 'bg-primary text-primary-foreground ring-primary' : 'bg-background ring-border hover:bg-muted',
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+        <input
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          maxLength={500}
+          placeholder="Reason (kept in the case audit log only)"
+          className="bg-background border-input focus-visible:ring-ring/50 h-8 w-full rounded-md border px-2.5 text-[13px] outline-none focus-visible:ring-2"
+        />
+        <div className="flex items-center gap-2">
+          <Button type="submit" size="sm" disabled={!valid || m.isPending}>
+            {m.isPending && <Loader2 className="animate-spin" data-icon="inline-start" />}
+            Save override
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={onDone}>
+            Cancel
+          </Button>
+          <span className="text-muted-foreground ml-auto text-[11px]">Corrections become lessons for future cases under this policy.</span>
+        </div>
+      </div>
+    </motion.form>
+  )
+}
+
+function CriterionRow({
+  k,
+  selected,
+  onSelect,
+  anyOfSatisfied,
+  caseId,
+  canOverride = false,
+  override,
+}: {
+  k: Criterion
+  selected: boolean
+  onSelect: () => void
+  anyOfSatisfied: boolean
+  caseId?: string
+  canOverride?: boolean
+  override?: OverrideInfo
+}) {
   const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
   const src = k.evidence_source
   // A red-flag criterion that is not documented is good news, not a gap: show it neutrally.
   const redFlagAbsent = k.group === 'red_flag_any_of' && k.status !== 'met'
@@ -94,17 +197,45 @@ function CriterionRow({ k, selected, onSelect, anyOfSatisfied }: { k: Criterion;
                 <TooltipContent className="max-w-xs">{k.verifier.deterministic_check.detail}</TooltipContent>
               </Tooltip>
             )}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                setOpen((o) => !o)
-              }}
-              className="text-muted-foreground hover:text-foreground ml-auto inline-flex items-center gap-1 text-[11.5px]"
-            >
-              Reasoning <ChevronDown className={cn('size-3.5 transition-transform', open && 'rotate-180')} />
-            </button>
+            {override && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center gap-1 rounded bg-violet-50 px-1.5 py-0.5 text-[11px] font-medium text-violet-800 ring-1 ring-violet-200 ring-inset dark:bg-violet-950 dark:text-violet-200 dark:ring-violet-900">
+                    <UserCheck className="size-3" /> overridden by reviewer
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  {override.from.replace('_', ' ')} → {override.to.replace('_', ' ')}
+                  {override.reason ? `: “${override.reason}”` : ''}
+                </TooltipContent>
+              </Tooltip>
+            )}
+            <span className="ml-auto flex items-center gap-3">
+              {canOverride && caseId && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditing((v) => !v)
+                  }}
+                  className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-[11.5px]"
+                >
+                  <PenLine className="size-3" /> Override
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setOpen((o) => !o)
+                }}
+                className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-[11.5px]"
+              >
+                Reasoning <ChevronDown className={cn('size-3.5 transition-transform', open && 'rotate-180')} />
+              </button>
+            </span>
           </div>
+          <AnimatePresence initial={false}>{editing && caseId && <OverrideForm caseId={caseId} k={k} onDone={() => setEditing(false)} />}</AnimatePresence>
           <AnimatePresence initial={false}>
             {open && (
               <motion.p initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="text-muted-foreground mt-2 overflow-hidden text-[12.5px] leading-relaxed">
@@ -148,6 +279,18 @@ export function CriteriaTab({
   }
   const openGaps = c.gaps.filter((g) => g.status === 'open').length
   const anyOfSatisfied = c.criteria.some((k) => k.group === 'any_of' && k.status === 'met')
+  const canOverride = OVERRIDE_STATES.includes(String(c.state))
+  // Latest reviewer override per criterion, read from the audit timeline.
+  const overrides = useMemo(() => {
+    const m = new Map<string, OverrideInfo>()
+    for (const ev of c.timeline ?? []) {
+      if (ev.type !== 'criterion.overridden') continue
+      const p = ev.payload as Record<string, unknown>
+      const id = String(p.criterion_id ?? '')
+      if (id) m.set(id, { from: String(p.from_status ?? ''), to: String(p.to_status ?? ''), reason: String(p.reason ?? ''), at: ev.at })
+    }
+    return m
+  }, [c.timeline])
 
   return (
     <div className="flex h-full flex-col">
@@ -222,7 +365,7 @@ export function CriteriaTab({
             {c.criteria
               .filter((k) => k.group !== 'red_flag_any_of')
               .map((k) => (
-                <CriterionRow key={k.id} k={k} anyOfSatisfied={anyOfSatisfied} selected={selectedId === k.id} onSelect={() => onSelect(selectedId === k.id ? null : k.id)} />
+                <CriterionRow key={k.id} k={k} caseId={c.id} canOverride={canOverride} override={overrides.get(k.id)} anyOfSatisfied={anyOfSatisfied} selected={selectedId === k.id} onSelect={() => onSelect(selectedId === k.id ? null : k.id)} />
               ))}
             {c.criteria.some((k) => k.group === 'red_flag_any_of') && (
               <li className="bg-muted/40 text-muted-foreground flex items-center gap-2 px-5 py-2 text-[11px] font-semibold tracking-wide uppercase">
@@ -232,7 +375,7 @@ export function CriteriaTab({
             {c.criteria
               .filter((k) => k.group === 'red_flag_any_of')
               .map((k) => (
-                <CriterionRow key={k.id} k={k} anyOfSatisfied={false} selected={selectedId === k.id} onSelect={() => onSelect(selectedId === k.id ? null : k.id)} />
+                <CriterionRow key={k.id} k={k} caseId={c.id} canOverride={canOverride} override={overrides.get(k.id)} anyOfSatisfied={false} selected={selectedId === k.id} onSelect={() => onSelect(selectedId === k.id ? null : k.id)} />
               ))}
           </ul>
         )}
