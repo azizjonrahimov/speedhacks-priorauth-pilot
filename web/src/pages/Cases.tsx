@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CaseTable } from '@/components/CaseTable'
+import { PageHeader } from '@/components/PageHeader'
 
 const FILTERS: { key: string; label: string; match: (s: string) => boolean }[] = [
   { key: 'all', label: 'All', match: () => true },
@@ -26,19 +27,19 @@ export function Cases() {
   }, [cases.data, filter, q])
 
   return (
-    <div className="mx-auto flex max-w-[1400px] flex-col gap-5 p-6">
-      <header className="flex items-end justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Cases</h1>
-          <p className="text-muted-foreground text-sm">{cases.data?.length ?? 0} prior authorizations</p>
-        </div>
-        <Button asChild>
-          <Link to="/new">
-            <FilePlus2 data-icon="inline-start" /> New case
-          </Link>
-        </Button>
-      </header>
-      <div className="flex items-center gap-3">
+    <div className="mx-auto flex max-w-[1400px] flex-col gap-5 p-4 md:p-6">
+      <PageHeader
+        title="Cases"
+        description={`${cases.data?.length ?? 0} prior authorizations`}
+        actions={
+          <Button asChild>
+            <Link to="/new">
+              <FilePlus2 data-icon="inline-start" /> New case
+            </Link>
+          </Button>
+        }
+      />
+      <div className="flex flex-wrap items-center gap-3">
         <Tabs value={filter} onValueChange={setFilter}>
           <TabsList>
             {FILTERS.map((f) => (

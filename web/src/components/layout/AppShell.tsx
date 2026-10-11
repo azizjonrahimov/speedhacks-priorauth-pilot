@@ -151,8 +151,31 @@ export function AppShell() {
   }, [navigate])
 
   return (
-    <div className="bg-background flex min-h-svh">
-      <aside className="no-print bg-sidebar text-sidebar-foreground border-sidebar-border sticky top-0 flex h-svh w-60 shrink-0 flex-col border-r">
+    <div className="bg-background flex min-h-svh flex-col md:flex-row">
+      {/* Mobile top bar: the sidebar collapses below md */}
+      <header className="no-print bg-sidebar border-sidebar-border sticky top-0 z-20 flex h-14 items-center gap-1 border-b px-3 md:hidden">
+        <Link to="/app" className="mr-auto flex items-center gap-2">
+          <span className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg">
+            <Stethoscope className="size-4.5" />
+          </span>
+          <span className="text-[15px] font-semibold tracking-tight">PriorAuth Pilot</span>
+        </Link>
+        {NAV.map((n) => (
+          <NavLink
+            key={n.to}
+            to={n.to}
+            end={n.end}
+            aria-label={n.label}
+            className={({ isActive }) => cn('flex size-9 items-center justify-center rounded-md', isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-muted-foreground')}
+          >
+            <n.icon className="size-4.5" />
+          </NavLink>
+        ))}
+        <Button variant="ghost" size="icon" onClick={() => setDark(!dark)} aria-label="Toggle dark mode">
+          {dark ? <Sun /> : <Moon />}
+        </Button>
+      </header>
+      <aside className="no-print bg-sidebar text-sidebar-foreground border-sidebar-border sticky top-0 hidden h-svh w-60 shrink-0 flex-col border-r md:flex">
         <Link to="/app" className="flex h-14 items-center gap-2.5 px-4">
           <span className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg">
             <Stethoscope className="size-4.5" />

@@ -16,6 +16,8 @@ import { CaseTable } from '@/components/CaseTable'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { BASELINE_SECONDS, fmtAgo, fmtClock, fmtTime, pct } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { PageHeader, greeting } from '@/components/PageHeader'
+import { useDemoUser } from '@/lib/auth'
 
 function Kpi({
   label,
@@ -38,7 +40,7 @@ function Kpi({
     <Card size="sm" className={cn(accent && 'ring-primary/30 bg-gradient-to-br from-teal-50/70 to-transparent dark:from-teal-950/40')}>
       <CardContent className="flex flex-col gap-1">
         <div className="text-muted-foreground flex items-center justify-between gap-2 text-[12.5px] font-medium">
-          <span className="flex items-center gap-2 whitespace-nowrap">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:flex-nowrap sm:whitespace-nowrap">
             {label}
             {badge}
           </span>
@@ -114,6 +116,7 @@ const chartConfig = {
 export function Dashboard() {
   const metrics = useMetrics()
   const cases = useCases()
+  const user = useDemoUser()
 
   const todayCount = useMemo(() => {
     const today = new Date().toDateString()
@@ -140,18 +143,18 @@ export function Dashboard() {
   const active = (cases.data ?? []).filter((c) => c.state !== 'closed')
 
   return (
-    <div className="mx-auto flex max-w-[1400px] flex-col gap-5 p-6">
-      <header className="flex items-end justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground text-sm">Prior authorizations across the practice, updated live.</p>
-        </div>
-        <Button asChild>
-          <Link to="/new">
-            <FilePlus2 data-icon="inline-start" /> New case
-          </Link>
-        </Button>
-      </header>
+    <div className="mx-auto flex max-w-[1400px] flex-col gap-5 p-4 md:p-6">
+      <PageHeader
+        title={greeting(user?.name)}
+        description="Prior authorizations across the practice, updated live."
+        actions={
+          <Button asChild>
+            <Link to="/new">
+              <FilePlus2 data-icon="inline-start" /> New case
+            </Link>
+          </Button>
+        }
+      />
 
       <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <Kpi
