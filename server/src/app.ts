@@ -9,6 +9,7 @@ import { AppError } from "./domain/types.js";
 import { redactValue } from "./util/redact.js";
 import { registerCaseRoutes } from "./routes/cases.js";
 import { registerMiscRoutes } from "./routes/misc.js";
+import { registerEvidenceRoutes } from "./routes/evidence.js";
 
 export interface AppContext {
   ledger: Ledger;
@@ -52,6 +53,7 @@ export async function buildApp(opts: { dbPath?: string; logger?: boolean } = {})
 
   registerMiscRoutes(app, ctx);
   registerCaseRoutes(app, ctx);
+  registerEvidenceRoutes(app, ctx);
 
   app.addHook("onClose", async () => ledger.close());
   return app as unknown as FastifyInstance & { ctx: AppContext };

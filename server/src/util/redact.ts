@@ -25,16 +25,29 @@ export function redactText(s: string): string {
   return out;
 }
 
-export function redactValue<T>(v: T): T {
+const SENSITIVE_KEYS = new Set(["note", "transcript", "transcriptTurns", "letter_text", "outboundInstruction"]);
+
+function isPlain(o: object) {
+  const p = Object.getPrototypeOf(o);
+  return p === null || p === Object.prototype;
+}
+
+/** Deep-redact a log object. Cycle-safe, depth-limited, and skips non-plain objects (sockets, streams, errors). */
+export function redactValue<T>(v: T, depth = 0, seen: WeakSet<object> = new WeakSet()): T {
   if (typeof v === "string") return redactText(v) as T;
-  if (Array.isArray(v)) return v.map(redactValue) as T;
-  if (v && typeof v === "object") {
-    const o: Record<string, unknown> = {};
-    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
-      if (k === "note" || k === "transcript" || k === "transcriptTurns" || k === "letter_text") o[k] = "[redacted]";
-      else o[k] = redactValue(val);
-    }
-    return o as T;
+  if (!v || typeof v !== "object") return v;
+  if (seen.has(v as object)) return "[circular]" as T;
+  if (depth > 6) return "[deep]" as T;
+  if (v instanceof Error) return { message: redactText(v.message), name: v.name } as T;
+  if (Array.isArray(v)) {
+    seen.add(v);
+    return v.slice(0, 200).map((x) => redactValue(x, depth + 1, seen)) as T;
   }
-  return v;
+  if (!isPlain(v as object)) return `[${(v as object).constructor?.name ?? "object"}]` as T;
+  seen.add(v as object);
+  const o: Record<string, unknown> = {};
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    o[k] = SENSITIVE_KEYS.has(k) ? "[redacted]" : redactValue(val, depth + 1, seen);
+  }
+  return o as T;
 }
