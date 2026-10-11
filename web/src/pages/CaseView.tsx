@@ -15,6 +15,7 @@ import { GapFillTab } from '@/components/case/GapFillTab'
 import { PacketTab } from '@/components/case/PacketTab'
 import { TimelineTab } from '@/components/case/TimelineTab'
 import { fmtDob } from '@/lib/format'
+import { likelyGap } from '@/lib/likelyGap'
 
 /** red_flags mixes short note quotes with full criterion sentences; prefer the short ones and cap the list. */
 export function compactFlags(flags: string[], max = 4): string[] {
@@ -43,6 +44,18 @@ export function CaseView() {
       void qc.invalidateQueries({ queryKey: queryKeys.events(id!) })
     },
     onError: (e: Error) => toast.error('Scoring failed', { description: e.message }),
+  })
+
+  // Surfaced early when Keewano says this policy usually needs a physician call.
+  const callNow = useMutation({
+    mutationFn: () => api.gapfillCall(id!),
+    onSuccess: () => {
+      toast.info(`Calling ${c?.physician.name ?? 'physician'}…`)
+      setTab('gaps')
+      void qc.invalidateQueries({ queryKey: queryKeys.case(id!) })
+      void qc.invalidateQueries({ queryKey: queryKeys.cases })
+    },
+    onError: (e: Error) => toast.error('Could not place call', { description: e.message }),
   })
 
   // Auto-trigger scoring once when arriving from intake with ?score=1
@@ -158,7 +171,17 @@ export function CaseView() {
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="criteria" className="min-h-0 flex-1">
-                <CriteriaTab c={c} scoring={score.isPending} onScore={() => score.mutate()} selectedId={selected} onSelect={setSelected} onGoToGaps={() => setTab('gaps')} />
+                <CriteriaTab
+                  c={c}
+                  scoring={score.isPending}
+                  onScore={() => score.mutate()}
+                  selectedId={selected}
+                  onSelect={setSelected}
+                  onGoToGaps={() => setTab('gaps')}
+                  likelyGap={likelyGap(c)}
+                  onCallNow={() => callNow.mutate()}
+                  calling={callNow.isPending}
+                />
               </TabsContent>
               <TabsContent value="gaps" className="min-h-0 flex-1 overflow-auto">
                 <GapFillTab c={c} />

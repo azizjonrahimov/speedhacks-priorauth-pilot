@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { NumberTicker } from '@/components/NumberTicker'
 import { CaseTable } from '@/components/CaseTable'
-import { BASELINE_SECONDS, fmtClock, pct } from '@/lib/format'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { BASELINE_SECONDS, fmtAgo, fmtClock, fmtTime, pct } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 function Kpi({
@@ -19,6 +20,7 @@ function Kpi({
   icon: Icon,
   loading,
   accent,
+  badge,
 }: {
   label: string
   value: React.ReactNode
@@ -26,18 +28,42 @@ function Kpi({
   icon: typeof Clock
   loading?: boolean
   accent?: boolean
+  badge?: React.ReactNode
 }) {
   return (
     <Card size="sm" className={cn(accent && 'ring-primary/30 bg-gradient-to-br from-teal-50/70 to-transparent dark:from-teal-950/40')}>
       <CardContent className="flex flex-col gap-1">
-        <div className="text-muted-foreground flex items-center justify-between text-[12.5px] font-medium">
-          {label}
-          <Icon className={cn('size-4', accent ? 'text-primary' : 'text-muted-foreground/70')} />
+        <div className="text-muted-foreground flex items-center justify-between gap-2 text-[12.5px] font-medium">
+          <span className="flex items-center gap-2">
+            {label}
+            {badge}
+          </span>
+          <Icon className={cn('size-4 shrink-0', accent ? 'text-primary' : 'text-muted-foreground/70')} />
         </div>
         {loading ? <Skeleton className="mt-1 h-9 w-24" /> : <div className="tabular text-[2rem] leading-none font-semibold tracking-tight">{value}</div>}
         <div className="text-muted-foreground mt-1 text-xs">{sub}</div>
       </CardContent>
     </Card>
+  )
+}
+
+function KeewanoBadge({ asOf, medianS }: { asOf: string | null; medianS: number | null }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="bg-primary/10 text-primary inline-flex h-5 cursor-default items-center gap-1 rounded-full px-2 text-[10.5px] font-semibold">
+          <span className="relative flex size-1.5">
+            <span className="bg-primary absolute inline-flex size-full animate-ping rounded-full opacity-60" />
+            <span className="bg-primary relative inline-flex size-1.5 rounded-full" />
+          </span>
+          live from Keewano
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">
+        <div>Computed from Keewano's median staff review time{medianS != null ? ` (${fmtClock(medianS)})` : ''}.</div>
+        <div className="opacity-80">{asOf ? `As of ${fmtTime(asOf)} · ${fmtAgo(asOf)}` : 'Refresh time unknown'}</div>
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -95,6 +121,7 @@ export function Dashboard() {
           label="Staff minutes saved"
           icon={TrendingUp}
           loading={metrics.isLoading}
+          badge={m?.source === 'keewano' ? <KeewanoBadge asOf={m.as_of ?? null} medianS={m.keewano?.median_review_s ?? null} /> : null}
           value={<NumberTicker value={m?.minutes_saved_total ?? 0} />}
           sub={
             <>

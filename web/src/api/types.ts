@@ -47,6 +47,7 @@ export interface Screening {
   red_flags: string[]
   screened_at: string
   expedited?: boolean
+  likely_gap?: boolean
 }
 
 export type FactKind =
@@ -272,6 +273,11 @@ export interface Metrics {
   minutes_saved_total: number
   baseline_minutes: number
   baseline_source: string
+  /** "keewano" when minutes_saved_total comes from Keewano's live median review time; absent on older backends. */
+  source?: 'keewano' | 'local' | (string & {})
+  /** When the Keewano figures were last refreshed (ISO); null when unknown. */
+  as_of?: string | null
+  keewano?: { median_review_s?: number | null; cases_with_call?: number | null; cases_scored?: number | null } | null
 }
 
 export interface PolicyListItem {
@@ -308,6 +314,8 @@ export interface ScreenResult {
   policy: Policy
   red_flags: string[]
   expedited: boolean
+  /** Keewano stretch: most past cases under this policy needed a physician call. */
+  likely_gap?: boolean
 }
 
 export interface ScoreResult {

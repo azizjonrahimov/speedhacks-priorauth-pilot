@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { AlertTriangle, ArrowRight, CheckCircle2, ExternalLink, FileText, Loader2, ShieldCheck, Sparkles } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, ExternalLink, FileText, Loader2, PhoneCall, ShieldCheck, Sparkles } from 'lucide-react'
+import { rememberLikelyGap } from '@/lib/likelyGap'
 import { api, queryKeys } from '@/api/client'
 import type { CaseDetail, DemoNote, ScreenResult } from '@/api/types'
 import { useDemoNotes, usePolicies } from '@/hooks/useApi'
@@ -58,6 +59,7 @@ export function NewCase() {
       return { c, screen }
     },
     onSuccess: (r) => {
+      rememberLikelyGap(r.c.id, r.screen.likely_gap)
       setResult(r)
       void qc.invalidateQueries({ queryKey: queryKeys.cases })
       void qc.invalidateQueries({ queryKey: queryKeys.metrics })
@@ -237,6 +239,15 @@ export function NewCase() {
                           <li key={f}>“{f}”</li>
                         ))}
                       </ul>
+                    </div>
+                  </div>
+                )}
+                {result.screen.likely_gap && (
+                  <div className="bg-unclear-bg text-unclear-fg flex items-start gap-2 rounded-md px-3 py-2 text-xs">
+                    <PhoneCall className="mt-0.5 size-3.5 shrink-0" />
+                    <div>
+                      <div className="font-semibold">Likely needs a physician call</div>
+                      Most past cases under this policy needed one. After scoring, the call button is ready on the criteria panel.
                     </div>
                   </div>
                 )}

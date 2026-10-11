@@ -170,8 +170,11 @@ export function screen(id: string, at?: string) {
   c.expedited = expedited
   if (!p.pa_required) c.overall = 'not_required'
   setState(c, 'screened')
+  // Mock Keewano history: these policies usually needed a physician call.
+  const likely_gap = ['27447', '43775', '95810'].includes(p.cpt)
+  c.screening.likely_gap = likely_gap
   emit(c, 'screening.completed', { pa_required: p.pa_required, policy, red_flags, expedited }, 'system', at)
-  return { pa_required: p.pa_required, policy, red_flags, expedited }
+  return { pa_required: p.pa_required, policy, red_flags, expedited, likely_gap }
 }
 
 /** Code-level check of numeric thresholds against the number found in the quote (mirrors the backend verifier). */
@@ -657,6 +660,10 @@ export function metrics(): Metrics {
     minutes_saved_total: Math.round(saved * 10) / 10,
     baseline_minutes: 24,
     baseline_source: 'CAQH Index 2024 (24 min per manual PA)',
+    // Mock the Keewano-backed variant so the "live from Keewano" badge can be designed without keys.
+    source: 'keewano',
+    as_of: new Date(Date.now() - 45_000).toISOString(),
+    keewano: { median_review_s: avg || null, cases_with_call: all.filter((c) => c.call).length, cases_scored: all.filter((c) => c.criteria.length).length },
   }
 }
 

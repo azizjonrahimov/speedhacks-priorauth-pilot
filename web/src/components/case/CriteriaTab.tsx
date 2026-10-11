@@ -126,7 +126,13 @@ export function CriteriaTab({
   selectedId,
   onSelect,
   onGoToGaps,
+  likelyGap = false,
+  onCallNow,
+  calling = false,
 }: {
+  likelyGap?: boolean
+  onCallNow?: () => void
+  calling?: boolean
   c: CaseDetail
   scoring: boolean
   onScore: () => void
@@ -177,6 +183,15 @@ export function CriteriaTab({
         </div>
       </div>
 
+      {likelyGap && c.overall !== 'ready' && c.overall !== 'expedite' && !c.call && (
+        <div className="bg-unclear-bg/60 text-unclear-fg flex items-center gap-2 border-b px-5 py-2 text-[12.5px]">
+          <PhoneCall className="size-3.5 shrink-0" />
+          <span>
+            <span className="font-semibold">Likely needs a physician call.</span> Most past cases under this policy did
+            {c.criteria.length === 0 ? '; score first so the call asks only the open questions.' : '.'}
+          </span>
+        </div>
+      )}
       <div className="flex-1 overflow-auto">
         {c.criteria.length === 0 ? (
           scoring ? (
@@ -238,10 +253,23 @@ export function CriteriaTab({
             )}
             {c.overall === 'needs_info' && <span className="text-muted-foreground text-xs">{openGaps} open question{openGaps === 1 ? '' : 's'} for the physician</span>}
           </div>
-          {c.overall === 'needs_info' && openGaps > 0 && (
-            <Button size="sm" onClick={onGoToGaps}>
-              <PhoneCall data-icon="inline-start" /> Fill gaps
-            </Button>
+          {c.overall === 'needs_info' && openGaps > 0 && likelyGap && onCallNow && !c.call ? (
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" onClick={onGoToGaps}>
+                Review questions
+              </Button>
+              <Button size="sm" onClick={onCallNow} disabled={calling}>
+                {calling ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <PhoneCall data-icon="inline-start" />}
+                Call {c.physician.name} now
+              </Button>
+            </div>
+          ) : (
+            c.overall === 'needs_info' &&
+            openGaps > 0 && (
+              <Button size="sm" onClick={onGoToGaps}>
+                <PhoneCall data-icon="inline-start" /> Fill gaps
+              </Button>
+            )
           )}
         </div>
       )}
