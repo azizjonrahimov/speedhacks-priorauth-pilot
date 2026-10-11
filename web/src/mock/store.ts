@@ -663,7 +663,14 @@ export function metrics(): Metrics {
     // Mock the Keewano-backed variant so the "live from Keewano" badge can be designed without keys.
     source: 'keewano',
     as_of: new Date(Date.now() - 45_000).toISOString(),
-    keewano: { median_review_s: avg || null, cases_with_call: all.filter((c) => c.call).length, cases_scored: all.filter((c) => c.criteria.length).length },
+    keewano: {
+      median_review_s: avg || null,
+      cases_with_call: all.filter((c) => c.call).length,
+      cases_scored: all.filter((c) => c.criteria.length).length + 30,
+      synthetic_cases: 30,
+      call_share: 0.19,
+      note: null,
+    },
   }
 }
 

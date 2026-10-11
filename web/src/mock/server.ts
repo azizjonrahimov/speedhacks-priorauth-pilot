@@ -41,6 +41,7 @@ async function route(method: string, parts: string[], body: unknown): Promise<un
     if (root === 'cases' && id && !action) return { case: store.getCase(id) }
     if (root === 'cases' && id && action === 'events') return { events: store.getCase(id).timeline }
   }
+  if (method === 'POST' && root === 'keewano' && id === 'refresh') return { insights: { status: 'ok', error: null } }
   if (method === 'POST' && root === 'cases') {
     if (!id) return { case: store.createCase(body as CreateCaseBody) }
     switch (action) {

@@ -277,7 +277,21 @@ export interface Metrics {
   source?: 'keewano' | 'local' | (string & {})
   /** When the Keewano figures were last refreshed (ISO); null when unknown. */
   as_of?: string | null
-  keewano?: { median_review_s?: number | null; cases_with_call?: number | null; cases_scored?: number | null } | null
+  keewano?: {
+    enabled?: boolean
+    status?: string
+    label?: string
+    median_review_s?: number | null
+    /** 0..1 share of scored cases that needed a physician call */
+    call_share?: number | null
+    cases_scored?: number | null
+    cases_with_call?: number | null
+    cases_reviewed?: number | null
+    /** backfilled synthetic history included in the counts above */
+    synthetic_cases?: number | null
+    as_of?: string | null
+    note?: string | null
+  } | null
 }
 
 export interface PolicyListItem {

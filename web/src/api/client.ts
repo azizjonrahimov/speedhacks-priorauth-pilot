@@ -73,6 +73,8 @@ export const api = {
   inquire: (id: string) => post<{ payer: Payer; changed: boolean }>(`/cases/${id}/inquire`),
   close: (id: string) => post<{ case: CaseDetail }>(`/cases/${id}/close`),
   metrics: () => request<Metrics>('/metrics'),
+  /** Forces a live Keewano re-query; never fails, errors come back in insights.error. */
+  keewanoRefresh: () => post<{ insights?: { status?: string; error?: string | null } }>('/keewano/refresh'),
   policies: () => request<{ policies: PolicyListItem[] }>('/policies'),
   demoNotes: () => request<{ notes: DemoNote[] }>('/demo/notes'),
 }

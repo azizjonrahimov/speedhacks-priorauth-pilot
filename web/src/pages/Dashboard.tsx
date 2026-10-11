@@ -1,7 +1,11 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
-import { ArrowRight, CheckCircle2, Clock, FilePlus2, Timer, TrendingUp } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Clock, FilePlus2, RefreshCw, Timer, TrendingUp } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { api, queryKeys } from '@/api/client'
+import type { Metrics } from '@/api/types'
 import { useCases, useMetrics } from '@/hooks/useApi'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
@@ -34,7 +38,7 @@ function Kpi({
     <Card size="sm" className={cn(accent && 'ring-primary/30 bg-gradient-to-br from-teal-50/70 to-transparent dark:from-teal-950/40')}>
       <CardContent className="flex flex-col gap-1">
         <div className="text-muted-foreground flex items-center justify-between gap-2 text-[12.5px] font-medium">
-          <span className="flex items-center gap-2">
+          <span className="flex items-center gap-2 whitespace-nowrap">
             {label}
             {badge}
           </span>
@@ -47,24 +51,58 @@ function Kpi({
   )
 }
 
-function KeewanoBadge({ asOf, medianS }: { asOf: string | null; medianS: number | null }) {
+function KeewanoBadge({ m }: { m: Metrics }) {
+  const qc = useQueryClient()
+  const k = m.keewano ?? {}
+  const asOf = m.as_of ?? k.as_of ?? null
+  const refresh = useMutation({
+    mutationFn: api.keewanoRefresh,
+    onSuccess: (r) => {
+      void qc.invalidateQueries({ queryKey: queryKeys.metrics })
+      if (r?.insights?.error) toast.warning('Keewano refresh returned an error', { description: r.insights.error })
+      else toast.success('Refreshed from Keewano')
+    },
+    onError: (e: Error) => toast.error('Keewano refresh failed', { description: e.message }),
+  })
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="bg-primary/10 text-primary inline-flex h-5 cursor-default items-center gap-1 rounded-full px-2 text-[10.5px] font-semibold">
-          <span className="relative flex size-1.5">
-            <span className="bg-primary absolute inline-flex size-full animate-ping rounded-full opacity-60" />
-            <span className="bg-primary relative inline-flex size-1.5 rounded-full" />
+    <span className="flex items-center gap-1.5">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="bg-primary/10 text-primary inline-flex h-5 cursor-default items-center gap-1 rounded-full pr-0.5 pl-2 text-[10.5px] font-semibold whitespace-nowrap">
+            <span className="relative flex size-1.5">
+              <span className="bg-primary absolute inline-flex size-full animate-ping rounded-full opacity-60" />
+              <span className="bg-primary relative inline-flex size-1.5 rounded-full" />
+            </span>
+            live from Keewano
+            <button
+              type="button"
+              aria-label="Refresh from Keewano"
+              onClick={() => refresh.mutate()}
+              disabled={refresh.isPending}
+              className="hover:bg-primary/15 ml-0.5 inline-flex size-4 items-center justify-center rounded-full disabled:opacity-60"
+            >
+              <RefreshCw className={cn('size-2.5', refresh.isPending && 'animate-spin')} />
+            </button>
           </span>
-          live from Keewano
-        </span>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-xs">
-        <div>Computed from Keewano's median staff review time{medianS != null ? ` (${fmtClock(medianS)})` : ''}.</div>
-        <div className="opacity-80">{asOf ? `As of ${fmtTime(asOf)} · ${fmtAgo(asOf)}` : 'Refresh time unknown'}</div>
-      </TooltipContent>
-    </Tooltip>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs space-y-0.5">
+          <div>Minutes saved use Keewano's median staff review time{k.median_review_s != null ? ` (${fmtClock(k.median_review_s)})` : ''}.</div>
+          {k.call_share != null && <div>{Math.round(k.call_share * 100)}% of cases needed a physician call.</div>}
+          {k.note && <div className="opacity-80">{k.note}</div>}
+          <div className="opacity-80">{asOf ? `As of ${fmtTime(asOf)} · ${fmtAgo(asOf)} · data lags about 5 min` : 'Refresh time unknown'}</div>
+        </TooltipContent>
+      </Tooltip>
+    </span>
   )
+}
+
+/** "41 cases · 40 synthetic history"; tolerant of missing fields. */
+function keewanoBasis(m: Metrics | undefined): string | null {
+  if (m?.source !== 'keewano') return null
+  const scored = m.keewano?.cases_scored
+  const synthetic = m.keewano?.synthetic_cases
+  if (scored == null) return null
+  return `${scored} case${scored === 1 ? '' : 's'}${synthetic != null && synthetic > 0 ? ` · ${synthetic} synthetic history` : ''}`
 }
 
 const chartConfig = {
@@ -121,12 +159,18 @@ export function Dashboard() {
           label="Staff minutes saved"
           icon={TrendingUp}
           loading={metrics.isLoading}
-          badge={m?.source === 'keewano' ? <KeewanoBadge asOf={m.as_of ?? null} medianS={m.keewano?.median_review_s ?? null} /> : null}
+          badge={m?.source === 'keewano' ? <KeewanoBadge m={m} /> : null}
           value={<NumberTicker value={m?.minutes_saved_total ?? 0} />}
           sub={
-            <>
-              vs <span className="font-medium">24 min</span> manual baseline · {m?.completed ?? 0} completed
-            </>
+            keewanoBasis(m) ? (
+              <>
+                vs <span className="font-medium">24 min</span> baseline · Keewano basis: <span className="tabular">{keewanoBasis(m)}</span>
+              </>
+            ) : (
+              <>
+                vs <span className="font-medium">24 min</span> manual baseline · {m?.completed ?? 0} completed
+              </>
+            )
           }
         />
         <Kpi label="Cases today" icon={FilePlus2} loading={cases.isLoading} value={<NumberTicker value={todayCount} />} sub={`${active.length} active · ${m?.cases ?? 0} total`} />
