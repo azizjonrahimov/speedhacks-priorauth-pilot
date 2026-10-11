@@ -23,7 +23,7 @@ describe("PAS bundle", () => {
     const claim = b.entry[0].resource as Record<string, any>;
     expect(claim.use).toBe("preauthorization");
     expect(claim.item[0].productOrService.coding[0]).toMatchObject({ code: "72148", system: "http://www.ama-assn.org/go/cpt" });
-    const urls = new Set(b.entry.map((e) => e.fullUrl));
+    const urls = new Set(b.entry.map((e) => `${e.resource.resourceType}/${e.resource.id}`));
     const refs: string[] = [];
     const walk = (o: unknown) => {
       if (!o || typeof o !== "object") return;

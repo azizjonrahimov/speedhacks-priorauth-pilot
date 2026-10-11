@@ -44,6 +44,8 @@ export function buildPasBundle({ c, letterText, pdfBase64, baseUrl = "http://pri
     docref: `docref-${c.id}`,
   };
   const url = (t: string, id: string) => `${baseUrl}/${t}/${id}`;
+  // References are RELATIVE (ResourceType/id): the Da Vinci reference server resolves them against the bundle; absolute URLs are rejected with "Unknown resource type http:".
+  const ref = (t: string, id: string) => `${t}/${id}`;
   const policyId = c.screening?.policy.id ?? "";
   const expedited = c.expedited;
 
@@ -55,26 +57,26 @@ export function buildPasBundle({ c, letterText, pdfBase64, baseUrl = "http://pri
     status: "active",
     type: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/claim-type", code: "professional" }] },
     use: "preauthorization",
-    patient: { reference: url("Patient", ids.patient) },
+    patient: { reference: ref("Patient", ids.patient) },
     created: now,
-    insurer: { reference: url("Organization", ids.insurer) },
-    provider: { reference: url("Organization", ids.requestor) },
+    insurer: { reference: ref("Organization", ids.insurer) },
+    provider: { reference: ref("Organization", ids.requestor) },
     priority: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/processpriority", code: expedited ? "stat" : "normal" }] },
-    careTeam: [{ sequence: 1, provider: { reference: url("Practitioner", ids.practitioner) }, role: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/claimcareteamrole", code: "primary" }] } }],
+    careTeam: [{ sequence: 1, provider: { reference: ref("Practitioner", ids.practitioner) }, role: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/claimcareteamrole", code: "primary" }] } }],
     supportingInfo: [
       {
         sequence: 1,
         category: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/claiminformationcategory", code: "attachment" }] },
-        valueReference: { reference: url("DocumentReference", ids.docref) },
+        valueReference: { reference: ref("DocumentReference", ids.docref) },
       },
     ],
-    insurance: [{ sequence: 1, focal: true, coverage: { reference: url("Coverage", ids.coverage) } }],
+    insurance: [{ sequence: 1, focal: true, coverage: { reference: ref("Coverage", ids.coverage) } }],
     item: [
       {
         extension: [
           { url: `${EX}/extension-serviceItemRequestType`, valueCodeableConcept: { coding: [{ system: "https://codesystem.x12.org/005010/1525", code: "SC", display: "Specialty Care Review" }] } },
           { url: `${EX}/extension-certificationType`, valueCodeableConcept: { coding: [{ system: "https://codesystem.x12.org/005010/1322", code: "I", display: "Initial" }] } },
-          { url: `${EX}/extension-requestedService`, valueReference: { reference: url("ServiceRequest", ids.serviceRequest) } },
+          { url: `${EX}/extension-requestedService`, valueReference: { reference: ref("ServiceRequest", ids.serviceRequest) } },
         ],
         sequence: 1,
         careTeamSequence: [1],
@@ -118,9 +120,9 @@ export function buildPasBundle({ c, letterText, pdfBase64, baseUrl = "http://pri
         meta: { profile: [`${PAS}/profile-coverage`] },
         status: "active",
         subscriberId: c.patient.member_id || "UNKNOWN",
-        beneficiary: { reference: url("Patient", ids.patient) },
+        beneficiary: { reference: ref("Patient", ids.patient) },
         relationship: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/subscriber-relationship", code: "self" }] },
-        payor: [{ reference: url("Organization", ids.insurer) }],
+        payor: [{ reference: ref("Organization", ids.insurer) }],
       },
     },
     {
@@ -155,8 +157,8 @@ export function buildPasBundle({ c, letterText, pdfBase64, baseUrl = "http://pri
         intent: "order",
         priority: expedited ? "stat" : "routine",
         code: { coding: [{ system: cptSystem(c.cpt), code: c.cpt, display: c.cpt_label }] },
-        subject: { reference: url("Patient", ids.patient) },
-        requester: { reference: url("Practitioner", ids.practitioner) },
+        subject: { reference: ref("Patient", ids.patient) },
+        requester: { reference: ref("Practitioner", ids.practitioner) },
         reasonCode: [{ text: `Medical necessity per ${policyId}` }],
       },
     },
@@ -167,9 +169,9 @@ export function buildPasBundle({ c, letterText, pdfBase64, baseUrl = "http://pri
         id: ids.docref,
         status: "current",
         type: { coding: [{ system: "http://loinc.org", code: "34109-9", display: "Note" }], text: "Letter of medical necessity" },
-        subject: { reference: url("Patient", ids.patient) },
+        subject: { reference: ref("Patient", ids.patient) },
         date: now,
-        author: [{ reference: url("Practitioner", ids.practitioner) }],
+        author: [{ reference: ref("Practitioner", ids.practitioner) }],
         description: `Letter of medical necessity for ${c.cpt_label}; criteria from ${policyId}`,
         content: [
           { attachment: { contentType: "text/plain", data: Buffer.from(letterText, "utf8").toString("base64"), title: "letter.txt" } },

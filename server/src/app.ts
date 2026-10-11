@@ -13,6 +13,9 @@ import { registerEvidenceRoutes } from "./routes/evidence.js";
 import { registerGapfillRoutes } from "./routes/gapfill.js";
 import { registerPacketRoutes } from "./routes/packet.js";
 import { DialService } from "./gapfill/dial.js";
+import { registerSubmitRoutes } from "./routes/submit.js";
+import { registerMetricsRoutes } from "./routes/metrics.js";
+import { wireInboundMessages } from "./notify/patient.js";
 
 export interface AppContext {
   ledger: Ledger;
@@ -61,8 +64,13 @@ export async function buildApp(opts: { dbPath?: string; logger?: boolean } = {})
   registerEvidenceRoutes(app, ctx);
   registerGapfillRoutes(app, ctx);
   registerPacketRoutes(app, ctx);
+  registerSubmitRoutes(app, ctx);
+  registerMetricsRoutes(app, ctx);
 
-  if (opts.logger !== false) void dial.listen();
+  if (opts.logger !== false) {
+    void dial.listen();
+    wireInboundMessages(ctx, app.log);
+  }
   app.addHook("onClose", async () => {
     dial.stop();
     ledger.close();
