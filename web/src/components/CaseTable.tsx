@@ -1,5 +1,6 @@
-import { useNavigate } from 'react-router-dom'
-import { Siren } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { FilePlus2, Inbox, Siren } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import type { CaseSummary } from '@/api/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -34,9 +35,22 @@ export function CaseTable({ cases, loading, emptyHint }: { cases: CaseSummary[] 
             </TableRow>
           ))}
         {!loading && cases?.length === 0 && (
-          <TableRow>
-            <TableCell colSpan={6} className="text-muted-foreground h-24 text-center">
-              {emptyHint ?? 'No cases yet. Press N to start one.'}
+          <TableRow className="hover:bg-transparent">
+            <TableCell colSpan={6} className="py-12">
+              <div className="flex flex-col items-center gap-3 text-center">
+                <span className="bg-primary/10 text-primary flex size-11 items-center justify-center rounded-full">
+                  <Inbox className="size-5" />
+                </span>
+                <div>
+                  <div className="text-foreground text-sm font-medium">{emptyHint ?? 'No prior authorizations yet'}</div>
+                  <div className="text-muted-foreground mt-0.5 text-xs">Paste a visit note to start one. Shortcut: N.</div>
+                </div>
+                <Button size="sm" variant="outline" asChild>
+                  <Link to="/new">
+                    <FilePlus2 data-icon="inline-start" /> New case
+                  </Link>
+                </Button>
+              </div>
             </TableCell>
           </TableRow>
         )}
