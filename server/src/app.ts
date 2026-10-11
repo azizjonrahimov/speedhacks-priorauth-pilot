@@ -16,13 +16,19 @@ import { DialService, type DialClientLike } from "./gapfill/dial.js";
 import { registerSubmitRoutes } from "./routes/submit.js";
 import { registerMetricsRoutes } from "./routes/metrics.js";
 import { wireInboundMessages } from "./notify/patient.js";
+import { KeewanoSink } from "./keewano/sink.js";
+import { KeewanoInsights } from "./keewano/insights.js";
+import { KeewanoQueryClient } from "./keewano/query.js";
 
 export interface AppContext {
   ledger: Ledger;
   dial: DialService;
+  keewano: { sink: KeewanoSink; insights: KeewanoInsights };
 }
 
-export async function buildApp(opts: { dbPath?: string; logger?: boolean; dialClient?: DialClientLike | null } = {}): Promise<FastifyInstance & { ctx: AppContext }> {
+export async function buildApp(
+  opts: { dbPath?: string; logger?: boolean; dialClient?: DialClientLike | null; keewanoSink?: KeewanoSink; keewanoInsights?: KeewanoInsights } = {},
+): Promise<FastifyInstance & { ctx: AppContext }> {
   const app = Fastify({
     logger:
       opts.logger === false
@@ -41,7 +47,12 @@ export async function buildApp(opts: { dbPath?: string; logger?: boolean; dialCl
 
   const ledger = new Ledger(opts.dbPath ?? config.dbPath);
   const dial = new DialService(app.log, opts.dialClient ?? null);
-  const ctx: AppContext = { ledger, dial };
+  // Keewano: inert unless keys are set. Tests (logger:false) get disabled defaults unless they inject instances.
+  const sink = opts.keewanoSink ?? new KeewanoSink(opts.logger === false ? "" : config.keewanoApiKey, app.log);
+  const insights =
+    opts.keewanoInsights ?? new KeewanoInsights(new KeewanoQueryClient(opts.logger === false ? "" : config.keewanoPat, config.keewanoProjectId || null), app.log);
+  ledger.bus.on("event", sink.onLedgerEvent);
+  const ctx: AppContext = { ledger, dial, keewano: { sink, insights } };
   (app as unknown as { ctx: AppContext }).ctx = ctx;
 
   await app.register(cors, { origin: config.corsOrigins, methods: ["GET", "POST", "OPTIONS"] });
@@ -82,9 +93,14 @@ export async function buildApp(opts: { dbPath?: string; logger?: boolean; dialCl
   if (opts.logger !== false) {
     void dial.listen();
     wireInboundMessages(ctx, app.log);
+    insights.start();
+    if (sink.enabled) void sink.register();
   }
   app.addHook("onClose", async () => {
     dial.stop();
+    insights.stop();
+    sink.stop();
+    await sink.flush().catch(() => {});
     ledger.close();
   });
   return app as unknown as FastifyInstance & { ctx: AppContext };

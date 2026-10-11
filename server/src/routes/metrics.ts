@@ -10,9 +10,27 @@ export function computeMetrics(ctx: AppContext) {
   const cases = ctx.ledger.allCases();
   const reviewed = cases.filter((c) => c.review);
   const avg = reviewed.length ? reviewed.reduce((s, c) => s + (c.review?.review_seconds ?? 0), 0) / reviewed.length : 0;
-  const avgMin = avg / 60;
-  const minutes_saved_total = Math.max(0, Math.round(reviewed.length * (BASELINE_MINUTES - avgMin) * 10) / 10);
+  // Live Keewano answer (cached, refreshed in the background) changes what the product reports:
+  // when Keewano has a median review time, minutes saved is computed from it instead of the local average.
+  const k = ctx.keewano.insights.state;
+  const kMedian = k.status === "ok" ? (k.data?.median_review_seconds ?? null) : null;
+  const reviewSeconds = kMedian ?? avg;
+  const minutes_saved_total = Math.max(0, Math.round(reviewed.length * (BASELINE_MINUTES - reviewSeconds / 60) * 10) / 10);
   return {
+    minutes_saved_source: kMedian != null ? ("keewano" as const) : ("local" as const),
+    keewano: {
+      enabled: k.enabled,
+      status: k.status,
+      label: "live from Keewano",
+      median_review_seconds: k.data?.median_review_seconds ?? null,
+      call_share: k.data?.call_share ?? null,
+      cases_scored: k.data?.cases_scored ?? 0,
+      cases_with_call: k.data?.cases_with_call ?? 0,
+      cases_reviewed: k.data?.cases_reviewed ?? 0,
+      as_of: k.data?.as_of ?? null,
+      note: k.error,
+      ingest: { enabled: ctx.keewano.sink.enabled, sent_events: ctx.keewano.sink.stats.sent_events, failed_batches: ctx.keewano.sink.stats.failed_batches },
+    },
     cases: cases.length,
     approved: cases.filter((c) => c.payer?.status === "approved" || c.state === "approved").length,
     pended: cases.filter((c) => c.state === "pended").length,
@@ -32,6 +50,11 @@ export function computeMetrics(ctx: AppContext) {
 export function registerMetricsRoutes(app: FastifyInstance, ctx: AppContext) {
   const { ledger } = ctx;
   app.get("/metrics", async () => computeMetrics(ctx));
+  // Force a Keewano refresh (demo button); returns the new insight state. Never blocks /metrics itself.
+  app.post("/keewano/refresh", async () => {
+    await ctx.keewano.insights.refresh();
+    return { insights: ctx.keewano.insights.state, ingest: ctx.keewano.sink.stats };
+  });
 
   app.post<{ Params: { id: string } }>("/cases/:id/review/complete", async (req) => {
     const c = ledger.requireCase(req.params.id);

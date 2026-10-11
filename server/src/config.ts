@@ -23,6 +23,9 @@ export const config = {
   },
   davinciUrl: process.env.DAVINCI_URL ?? "https://prior-auth.davinci.hl7.org/fhir",
   packetsDir: process.env.PACKETS_DIR ?? "./data/packets",
+  keewanoApiKey: process.env.KEEWANO_API_KEY ?? "", // project ingest key (k-token for REST ingest)
+  keewanoPat: process.env.KEEWANO_PAT ?? "", // personal access token kwpat-… (k-token for MCP queries)
+  keewanoProjectId: process.env.KEEWANO_PROJECT_ID ?? "",
   corsOrigins: (process.env.CORS_ORIGINS ?? "http://localhost:5173").split(",").map((s) => s.trim()),
 };
 
