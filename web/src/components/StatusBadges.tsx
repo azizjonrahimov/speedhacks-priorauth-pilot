@@ -66,12 +66,12 @@ const CRIT: Record<string, { label: string; cls: string; Icon: typeof CheckCircl
   not_applicable: { label: 'N/A', cls: 'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700', Icon: CircleDashed },
 }
 
-export function CriterionChip({ status, className }: { status: CriterionStatus; className?: string }) {
+export function CriterionChip({ status, label, className }: { status: CriterionStatus; label?: string; className?: string }) {
   const c = CRIT[status] ?? { label: status, cls: CRIT.not_applicable.cls, Icon: CircleDashed }
   return (
     <span className={cn('inline-flex h-6 items-center gap-1 rounded-md px-2 text-xs font-semibold ring-1 ring-inset', c.cls, className)}>
       <c.Icon className="size-3.5" />
-      {c.label}
+      {label ?? c.label}
     </span>
   )
 }

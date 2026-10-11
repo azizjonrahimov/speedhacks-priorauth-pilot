@@ -11,13 +11,13 @@ export function CaseTable({ cases, loading, emptyHint }: { cases: CaseSummary[] 
   const navigate = useNavigate()
   const open = (id: string) => navigate(`/cases/${id}`)
   return (
-    <Table>
+    <Table className="table-fixed">
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          <TableHead className="w-[22%]">Patient</TableHead>
+          <TableHead className="w-[20%]">Patient</TableHead>
           <TableHead>Procedure</TableHead>
-          <TableHead className="w-[14%]">Insurer</TableHead>
-          <TableHead className="w-[13%]">State</TableHead>
+          <TableHead className="w-[15%]">Insurer</TableHead>
+          <TableHead className="w-[12%]">State</TableHead>
           <TableHead className="w-[12%]">Overall</TableHead>
           <TableHead className="w-[11%] text-right">Updated</TableHead>
         </TableRow>
@@ -64,11 +64,13 @@ export function CaseTable({ cases, loading, emptyHint }: { cases: CaseSummary[] 
                 )}
               </div>
             </TableCell>
-            <TableCell>
+            <TableCell className="truncate" title={`${c.cpt} · ${c.cpt_label}`}>
               <span className="text-muted-foreground tabular mr-2 font-mono text-xs">{c.cpt}</span>
               {c.cpt_label}
             </TableCell>
-            <TableCell>{c.insurer}</TableCell>
+            <TableCell className="truncate" title={c.insurer}>
+              {c.insurer}
+            </TableCell>
             <TableCell>
               <StateBadge state={c.state} />
             </TableCell>

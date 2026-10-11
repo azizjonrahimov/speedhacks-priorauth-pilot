@@ -96,7 +96,9 @@ export function PacketTab({ c }: { c: CaseDetail }) {
   const bundleEntries = (c.packet?.fhir_bundle as { entry?: unknown[] } | null)?.entry?.length ?? 0
   const payer = c.payer
   const decided = payer && payer.adjudication
-  const canSubmit = !!c.packet && !payer
+  // No payer yet, or the last submission failed (e.g. circuit breaker tripped): staff can submit again.
+  const failed = payer?.status === 'failed'
+  const canSubmit = !!c.packet && (!payer || failed)
   const saved = c.review ? Math.max(0, 24 * 60 - c.review.review_seconds) : 0
 
   if (c.criteria.length === 0) {
@@ -198,7 +200,7 @@ export function PacketTab({ c }: { c: CaseDetail }) {
                 {payer.attempts.map((a, i) => (
                   <Attempt key={a.n} a={a} last={i === payer.attempts.length - 1 && !payer.reference} />
                 ))}
-                {payer.attempts.length === 0 && (
+                {payer.attempts.length === 0 && !failed && (
                   <li className="text-muted-foreground flex items-center gap-2 text-sm">
                     <Loader2 className="size-3.5 animate-spin" /> Connecting to payer…
                   </li>
@@ -216,16 +218,26 @@ export function PacketTab({ c }: { c: CaseDetail }) {
                   )}
                 </div>
               )}
+              {failed && (
+                <div className="bg-missing-bg text-missing-fg flex items-start gap-3 rounded-lg px-4 py-3 ring-1 ring-rose-200 ring-inset">
+                  <XCircle className="mt-0.5 size-4 shrink-0" />
+                  <div className="text-[13px]">
+                    <div className="font-semibold">Submission failed after {payer.attempts.length} attempt{payer.attempts.length === 1 ? '' : 's'}</div>
+                    {payer.reason && <div>{payer.reason}</div>}
+                    <div className="mt-0.5 text-xs opacity-80">The packet is intact. Submit again when the payer endpoint recovers.</div>
+                  </div>
+                </div>
+              )}
               <AnimatePresence>
                 {decided ? (
-                  <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className={cn('flex items-start gap-3 rounded-lg px-4 py-3 ring-1 ring-inset', (ADJ[payer.adjudication!] ?? ADJ.A4).cls)}>
-                    <div className="text-base font-bold">{(ADJ[payer.adjudication!] ?? { label: payer.adjudication }).label}</div>
+                  <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className={cn('flex items-start gap-3 rounded-lg px-4 py-3 ring-1 ring-inset', (ADJ[payer.adjudication!] ?? { cls: 'bg-muted text-foreground ring-border' }).cls)}>
+                    <div className="text-base font-bold">{(ADJ[payer.adjudication!] ?? { label: `${payer.adjudication} · ${payer.status}` }).label}</div>
                     <div className="text-[13px]">
                       {payer.reason ?? (payer.status === 'approved' ? 'Medical necessity criteria met.' : '')}
                       {payer.responded_at && <span className="block text-xs opacity-70">responded {fmtTime(payer.responded_at)}</span>}
                     </div>
                   </motion.div>
-                ) : payer.reference ? (
+                ) : payer.reference && !failed ? (
                   <p className="text-muted-foreground flex items-center gap-2 text-sm">
                     <Loader2 className="size-3.5 animate-spin" /> Awaiting payer decision…
                   </p>

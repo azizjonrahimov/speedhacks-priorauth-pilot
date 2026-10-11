@@ -5,14 +5,20 @@ import type { CaseDetail, Criterion } from '@/api/types'
 import { CriterionChip, OverallPill } from '@/components/StatusBadges'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { compactFlags } from '@/pages/CaseView'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 const BAR: Record<string, string> = { met: 'bg-met', unclear: 'bg-unclear', missing: 'bg-missing', not_applicable: 'bg-slate-400' }
 
-function CriterionRow({ k, selected, onSelect }: { k: Criterion; selected: boolean; onSelect: () => void }) {
+function CriterionRow({ k, selected, onSelect, anyOfSatisfied }: { k: Criterion; selected: boolean; onSelect: () => void; anyOfSatisfied: boolean }) {
   const [open, setOpen] = useState(false)
   const src = k.evidence_source
+  // A red-flag criterion that is not documented is good news, not a gap: show it neutrally.
+  const redFlagAbsent = k.group === 'red_flag_any_of' && k.status !== 'met'
+  // An unmet member of an any_of group that another member already satisfies is optional, not a gap.
+  const optional = k.group === 'any_of' && anyOfSatisfied && k.status !== 'met' && k.status !== 'not_applicable'
+  const chipStatus = redFlagAbsent || optional ? 'not_applicable' : k.status
   return (
     <motion.li
       layout
@@ -30,8 +36,8 @@ function CriterionRow({ k, selected, onSelect }: { k: Criterion; selected: boole
       />
       <div className="relative flex items-start gap-3">
         <AnimatePresence mode="popLayout" initial={false}>
-          <motion.div key={k.status} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} transition={{ type: 'spring', stiffness: 500, damping: 28 }} className="w-[74px] shrink-0 pt-px">
-            <CriterionChip status={k.status} />
+          <motion.div key={chipStatus} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} transition={{ type: 'spring', stiffness: 500, damping: 28 }} className="w-[74px] shrink-0 pt-px">
+            <CriterionChip status={chipStatus} label={redFlagAbsent ? 'Absent' : optional ? 'Optional' : undefined} />
           </motion.div>
         </AnimatePresence>
         <div className="min-w-0 flex-1">
@@ -57,12 +63,16 @@ function CriterionRow({ k, selected, onSelect }: { k: Criterion; selected: boole
                 )}
               </span>
             </blockquote>
+          ) : redFlagAbsent ? (
+            <p className="text-muted-foreground mt-1.5 text-[12.5px]">Not documented in the note; standard review pathway.</p>
+          ) : optional ? (
+            <p className="text-muted-foreground mt-1.5 text-[12.5px]">Not documented; another finding in this group already satisfies the policy.</p>
           ) : (
             k.question_if_missing && <p className="text-muted-foreground mt-1.5 text-[12.5px] italic">Will ask: “{k.question_if_missing}”</p>
           )}
           <div className="mt-2 flex items-center gap-3">
             <div className="bg-muted h-1.5 w-28 overflow-hidden rounded-full">
-              <motion.div className={cn('h-full rounded-full', BAR[k.status] ?? BAR.not_applicable)} initial={{ width: 0 }} animate={{ width: `${Math.round(k.confidence * 100)}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
+              <motion.div className={cn('h-full rounded-full', BAR[chipStatus] ?? BAR.not_applicable)} initial={{ width: 0 }} animate={{ width: `${Math.round(k.confidence * 100)}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
             </div>
             <span className="text-muted-foreground tabular text-[11px]">{Math.round(k.confidence * 100)}% confidence</span>
             {k.verifier?.quote_verified && (
@@ -131,6 +141,7 @@ export function CriteriaTab({
     total: c.criteria.filter((k) => k.group !== 'red_flag_any_of').length,
   }
   const openGaps = c.gaps.filter((g) => g.status === 'open').length
+  const anyOfSatisfied = c.criteria.some((k) => k.group === 'any_of' && k.status === 'met')
 
   return (
     <div className="flex h-full flex-col">
@@ -193,9 +204,21 @@ export function CriteriaTab({
           )
         ) : (
           <ul className="divide-y">
-            {c.criteria.map((k) => (
-              <CriterionRow key={k.id} k={k} selected={selectedId === k.id} onSelect={() => onSelect(selectedId === k.id ? null : k.id)} />
-            ))}
+            {c.criteria
+              .filter((k) => k.group !== 'red_flag_any_of')
+              .map((k) => (
+                <CriterionRow key={k.id} k={k} anyOfSatisfied={anyOfSatisfied} selected={selectedId === k.id} onSelect={() => onSelect(selectedId === k.id ? null : k.id)} />
+              ))}
+            {c.criteria.some((k) => k.group === 'red_flag_any_of') && (
+              <li className="bg-muted/40 text-muted-foreground flex items-center gap-2 px-5 py-2 text-[11px] font-semibold tracking-wide uppercase">
+                <Siren className="size-3.5" /> Red flags screened · any present expedites the request
+              </li>
+            )}
+            {c.criteria
+              .filter((k) => k.group === 'red_flag_any_of')
+              .map((k) => (
+                <CriterionRow key={k.id} k={k} anyOfSatisfied={false} selected={selectedId === k.id} onSelect={() => onSelect(selectedId === k.id ? null : k.id)} />
+              ))}
           </ul>
         )}
       </div>
@@ -205,9 +228,11 @@ export function CriteriaTab({
           <div className="flex items-center gap-3">
             <OverallPill overall={c.overall} size="lg" />
             {c.overall === 'expedite' && c.red_flags.length > 0 && (
-              <ul className="text-expedite text-xs font-medium">
-                {c.red_flags.map((f) => (
-                  <li key={f}>“{f}”</li>
+              <ul className="text-expedite max-w-md text-xs font-medium" title={c.red_flags.join('\n')}>
+                {compactFlags(c.red_flags, 3).map((f) => (
+                  <li key={f} className="truncate">
+                    {f.startsWith('+') ? f : `“${f}”`}
+                  </li>
                 ))}
               </ul>
             )}

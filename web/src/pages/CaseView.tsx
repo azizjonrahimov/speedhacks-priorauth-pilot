@@ -16,6 +16,14 @@ import { PacketTab } from '@/components/case/PacketTab'
 import { TimelineTab } from '@/components/case/TimelineTab'
 import { fmtDob } from '@/lib/format'
 
+/** red_flags mixes short note quotes with full criterion sentences; prefer the short ones and cap the list. */
+export function compactFlags(flags: string[], max = 4): string[] {
+  const short = flags.filter((f) => f.length <= 60)
+  const list = (short.length ? short : flags).slice(0, max).map((f) => (f.length > 60 ? f.slice(0, 57).trimEnd() + '…' : f))
+  const rest = flags.length - list.length
+  return rest > 0 ? [...list, `+${rest} more`] : list
+}
+
 export function CaseView() {
   const { id } = useParams<{ id: string }>()
   const [params, setParams] = useSearchParams()
@@ -44,7 +52,16 @@ export function CaseView() {
     if (params.get('score') === '1') {
       fired.current = true
       setParams({}, { replace: true })
-      if (c.criteria.length === 0) score.mutate()
+      // Survive StrictMode double-effects and dev remounts: score each case at most once per session.
+      const key = `pap.autoscore.${c.id}`
+      let already = false
+      try {
+        already = sessionStorage.getItem(key) === '1'
+        sessionStorage.setItem(key, '1')
+      } catch {
+        /* ignore */
+      }
+      if (c.criteria.length === 0 && !already) score.mutate()
     }
   }, [c, params, setParams, score])
 
@@ -103,8 +120,11 @@ export function CaseView() {
           )}
         </div>
         {c?.expedited && (
-          <div className="bg-expedite flex items-center gap-2 px-5 py-1.5 text-[13px] font-medium text-white">
-            <Siren className="size-4" /> Expedited — 72-hour decision window (CMS-0057-F). Red flags: {c.red_flags.join('; ')}
+          <div className="bg-expedite flex items-center gap-2 px-5 py-1.5 text-[13px] font-medium text-white" title={c.red_flags.join('\n')}>
+            <Siren className="size-4 shrink-0" />
+            <span className="truncate">
+              Expedited — 72-hour decision window (CMS-0057-F). Red flags: {compactFlags(c.red_flags).join(' · ')}
+            </span>
           </div>
         )}
       </header>
@@ -120,11 +140,17 @@ export function CaseView() {
               <TabsList variant="line" className="no-print h-11 w-full justify-start gap-4 rounded-none border-b px-5">
                 <TabsTrigger value="criteria">
                   Criteria
-                  {c.criteria.length > 0 && <span className="text-muted-foreground tabular ml-1 text-xs">{c.criteria.filter((k) => k.status === 'met').length}/{c.criteria.length}</span>}
+                  {c.criteria.length > 0 && (
+                    <span className="text-muted-foreground tabular ml-1 text-xs">
+                      {c.criteria.filter((k) => k.status === 'met' && k.group !== 'red_flag_any_of').length}/{c.criteria.filter((k) => k.group !== 'red_flag_any_of').length}
+                    </span>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="gaps">
                   Gap fill
-                  {c.gaps.filter((g) => g.status === 'open').length > 0 && <span className="bg-unclear text-white tabular ml-1 rounded-full px-1.5 text-[10px] font-bold">{c.gaps.filter((g) => g.status === 'open').length}</span>}
+                  {c.overall === 'needs_info' && c.gaps.filter((g) => g.status === 'open').length > 0 && (
+                    <span className="bg-unclear text-white tabular ml-1 rounded-full px-1.5 text-[10px] font-bold">{c.gaps.filter((g) => g.status === 'open').length}</span>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="packet">Packet</TabsTrigger>
                 <TabsTrigger value="timeline">
