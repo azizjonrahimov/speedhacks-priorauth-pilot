@@ -6,3 +6,4 @@ data/*.db-*
 data/packets/*.pdf
 data/packets-test/
 data/server.log
+data/server.err.log
