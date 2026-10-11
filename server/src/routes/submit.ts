@@ -23,7 +23,9 @@ export function makeAdapters() {
 export function registerSubmitRoutes(app: FastifyInstance, ctx: AppContext) {
   const { ledger } = ctx;
   const adapters = makeAdapters();
-  const breakers = { mock: new CircuitBreaker(4, 30_000), davinci: new CircuitBreaker(3, 60_000) };
+  // Threshold > maxAttempts (5): one submission can exhaust its retries without tripping the breaker;
+  // the breaker opens on sustained failure across submissions and half-opens after the cooldown.
+  const breakers = { mock: new CircuitBreaker(8, 20_000), davinci: new CircuitBreaker(6, 60_000) };
 
   app.post<{ Params: { id: string }; Querystring: { adapter?: string } }>("/cases/:id/submit", async (req) => {
     const c = ledger.requireCase(req.params.id);
