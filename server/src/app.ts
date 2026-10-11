@@ -46,6 +46,18 @@ export async function buildApp(opts: { dbPath?: string; logger?: boolean; dialCl
 
   await app.register(cors, { origin: config.corsOrigins, methods: ["GET", "POST", "OPTIONS"] });
 
+  // Lenient JSON: body-less POSTs (screen, score, packet, submit, ...) may carry a JSON content-type with an empty body.
+  app.removeContentTypeParser("application/json");
+  app.addContentTypeParser("application/json", { parseAs: "string" }, (_req, body, done) => {
+    const text = String(body ?? "").trim();
+    if (text === "") return done(null, {});
+    try {
+      done(null, JSON.parse(text));
+    } catch {
+      done(new AppError(400, "bad_request", "invalid JSON body"), undefined);
+    }
+  });
+
   const packetsDir = resolve(config.packetsDir);
   mkdirSync(packetsDir, { recursive: true });
   await app.register(fastifyStatic, { root: packetsDir, prefix: "/packets/", decorateReply: false });

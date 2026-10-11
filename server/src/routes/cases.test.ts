@@ -60,6 +60,15 @@ describe("routes: policies, notes, cases, screen", () => {
     expect(nf.json().error.code).toBe("not_found");
   });
 
+  it("accepts an empty body with a JSON content-type on body-less POSTs", async () => {
+    const r = await app.inject({ method: "POST", url: "/cases", payload: { note: "A long enough note for an empty-body test case here.", cpt: "72148", insurer: "Aetna", patient: { name: "E B" }, physician: { name: "Dr Q" } } });
+    const s = await app.inject({ method: "POST", url: `/cases/${r.json().case.id}/screen`, headers: { "content-type": "application/json" }, payload: "" });
+    expect(s.statusCode).toBe(200);
+    const bad = await app.inject({ method: "POST", url: "/cases", headers: { "content-type": "application/json" }, payload: "{not json" });
+    expect(bad.statusCode).toBe(400);
+    expect(bad.json().error.code).toBe("bad_request");
+  });
+
   it("screens unknown insurer/cpt as not required", async () => {
     const r = await app.inject({
       method: "POST",

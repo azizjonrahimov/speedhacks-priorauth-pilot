@@ -12,6 +12,7 @@ beforeAll(async () => {
   config.chaos.pTimeout = 0;
   config.chaos.pPend = 0;
   config.packetsDir = "./data/packets-test";
+  config.anthropicApiKey = ""; // tests never call the real LLM: exercise the template-letter path
   app = await buildApp({ dbPath: ":memory:", logger: false });
 });
 afterAll(async () => {

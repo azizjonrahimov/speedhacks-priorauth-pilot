@@ -23,6 +23,25 @@ export interface EndedCall {
 /** The subset of DialClient we use; tests inject a fake. */
 export type DialClientLike = Pick<DialClientT, "makeCall" | "getCall" | "sendMessage" | "newEventsConnection">;
 
+/** Map Dial SDK failures to short, demo-safe messages (never raw payloads or keys). */
+export function dialError(e: unknown, action: string): AppError {
+  const err = e as { status?: number; statusCode?: number; code?: string; message?: string };
+  const status = err.status ?? err.statusCode;
+  const code = String(err.code ?? "");
+  const msg = String(err.message ?? e)
+    .replace(/sk_[A-Za-z0-9_]+/g, "[key]")
+    .replace(/\{[\s\S]*\}/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+  if (status === 401 || status === 403 || /unauthori|invalid api key|forbidden/i.test(msg)) return new AppError(503, "dial_unavailable", "Dial not configured: DIAL_API_KEY in server/.env was rejected. Use POST /cases/:id/gapfill/manual.");
+  if (status === 429 || code === "call_limit_reached" || /call_limit|concurrent/i.test(msg)) return new AppError(503, "call_failed", "Dial: the from-number is already on a call or the concurrency limit was reached (429). Retry in a minute or use manual entry.");
+  if (status === 409 || code === "calling_disabled" || /calling_disabled/i.test(msg)) return new AppError(503, "call_failed", "Dial: calling is disabled on the from-number (409). Enable calling or use manual entry.");
+  if (status === 400) return new AppError(400, "call_failed", `Dial rejected the call request (400): ${msg || "check PHYSICIAN_PHONE is E.164"}`);
+  if (status && status >= 500) return new AppError(502, "call_failed", `Dial provider error (${status}) while ${action}. Retry or use manual entry.`);
+  return new AppError(502, "call_failed", `Dial error while ${action}: ${msg || "unknown"}`);
+}
+
 export class DialService {
   readonly events = new EventEmitter();
   private client: DialClientLike | null = null;
@@ -105,8 +124,7 @@ export class DialService {
         maxCallDurationSeconds: Math.min(params.maxSeconds ?? 240, 300),
       });
     } catch (e) {
-      const msg = String((e as Error).message ?? e);
-      throw new AppError(502, "call_failed", `Dial makeCall failed for ${maskPhone(params.to)}: ${msg.slice(0, 300)}`);
+      throw dialError(e, `placing call to ${maskPhone(params.to)}`);
     }
   }
 
@@ -195,7 +213,12 @@ export class DialService {
 
   async sendSms(to: string, body: string): Promise<{ id: string; state: string }> {
     const client = await this.getClient();
-    const m = await client.sendMessage({ to, fromNumberId: config.dialFromNumberId, body });
+    let m: Awaited<ReturnType<DialClientLike["sendMessage"]>>;
+    try {
+      m = await client.sendMessage({ to, fromNumberId: config.dialFromNumberId, body });
+    } catch (e) {
+      throw dialError(e, `sending SMS to ${maskPhone(to)}`);
+    }
     return { id: m.id, state: String((m as { deliveryState?: string }).deliveryState ?? (m as { status?: string }).status ?? "pending") };
   }
 }
