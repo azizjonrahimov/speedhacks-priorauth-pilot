@@ -35,6 +35,8 @@ export const CATALOG: CustomEventType[] = [
   { eventTypeId: 2014, name: "PA Payer Decision", dataType: "string" },
   { eventTypeId: 2015, name: "PA Patient Notified", dataType: "string" },
   { eventTypeId: 2016, name: "PA Review Seconds", dataType: "uint" },
+  // "live" for real cases, "synthetic" for backfilled history; lets every query separate the two.
+  { eventTypeId: 2017, name: "PA Data Origin", dataType: "string" },
 ];
 
 const byId = new Map(CATALOG.map((c) => [c.eventTypeId, c]));
@@ -87,6 +89,7 @@ export function mapLedgerEvent(ev: LedgerEvent): KeewanoEvent[] {
   const out: (KeewanoEvent | null)[] = [];
   switch (ev.type) {
     case "case.created":
+      out.push(mk(2017, "live"));
       out.push(mk(2000, s(`${p.insurer ?? ""} ${p.cpt ?? ""}`.trim())));
       break;
     case "screening.completed":

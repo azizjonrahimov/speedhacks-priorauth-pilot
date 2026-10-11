@@ -9,7 +9,8 @@ export const INSIGHTS_SQL = `SELECT
   percentile_cont(0.5) WITHIN GROUP (ORDER BY "PA Review Seconds") FILTER (WHERE occurrence("PA Review Seconds") = 1) AS median_review_s,
   count(DISTINCT user_id) FILTER (WHERE "PA Review Seconds" IS NOT NULL) AS cases_reviewed,
   count(DISTINCT user_id) FILTER (WHERE "PA Call Placed" IS NOT NULL) AS cases_with_call,
-  count(DISTINCT user_id) FILTER (WHERE "PA Score Overall" IS NOT NULL) AS cases_scored
+  count(DISTINCT user_id) FILTER (WHERE "PA Score Overall" IS NOT NULL) AS cases_scored,
+  count(DISTINCT user_id) FILTER (WHERE "PA Data Origin" = 'synthetic') AS synthetic_cases
 FROM events`;
 
 // Fallback without FILTER on the percentile, in case the engine rejects that combination.
@@ -17,7 +18,8 @@ export const INSIGHTS_SQL_SIMPLE = `SELECT
   percentile_cont(0.5) WITHIN GROUP (ORDER BY "PA Review Seconds") AS median_review_s,
   count(DISTINCT user_id) FILTER (WHERE "PA Review Seconds" IS NOT NULL) AS cases_reviewed,
   count(DISTINCT user_id) FILTER (WHERE "PA Call Placed" IS NOT NULL) AS cases_with_call,
-  count(DISTINCT user_id) FILTER (WHERE "PA Score Overall" IS NOT NULL) AS cases_scored
+  count(DISTINCT user_id) FILTER (WHERE "PA Score Overall" IS NOT NULL) AS cases_scored,
+  count(DISTINCT user_id) FILTER (WHERE "PA Data Origin" = 'synthetic') AS synthetic_cases
 FROM events
 WHERE occurrence("PA Review Seconds") = 1 OR "PA Review Seconds" IS NULL`;
 
@@ -27,6 +29,7 @@ export interface KeewanoInsight {
   cases_scored: number;
   cases_with_call: number;
   call_share: number | null; // cases_with_call / cases_scored
+  synthetic_cases: number; // how many of the cases are backfilled synthetic history
   as_of: string;
   query: string;
 }
@@ -87,7 +90,7 @@ export class KeewanoInsights {
         } catch (e) {
           // unknown column = our events were never ingested yet: report zeros, not an error
           if (/unknown column/i.test(String((e as Error).message))) {
-            this.state.data = { median_review_seconds: null, cases_reviewed: 0, cases_scored: 0, cases_with_call: 0, call_share: null, as_of: new Date().toISOString(), query: this.useSimple ? INSIGHTS_SQL_SIMPLE : INSIGHTS_SQL };
+            this.state.data = { median_review_seconds: null, cases_reviewed: 0, cases_scored: 0, cases_with_call: 0, call_share: null, synthetic_cases: 0, as_of: new Date().toISOString(), query: this.useSimple ? INSIGHTS_SQL_SIMPLE : INSIGHTS_SQL };
             this.state.status = "ok";
             this.state.error = "no PriorAuth events in Keewano yet";
             return;
@@ -101,6 +104,7 @@ export class KeewanoInsights {
           median_review_seconds: num(o.median_review_s),
           cases_reviewed: num(o.cases_reviewed) ?? 0,
           cases_scored: scored,
+          synthetic_cases: num(o.synthetic_cases) ?? 0,
           cases_with_call: withCall,
           call_share: scored > 0 ? Math.round((withCall / scored) * 1000) / 1000 : null,
           as_of: new Date().toISOString(),

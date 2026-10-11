@@ -25,7 +25,7 @@ describe("keewano catalog", () => {
 
   it("maps ledger events to typed, PHI-free values", () => {
     const created = mapLedgerEvent(ev("case.created", { insurer: "Aetna", cpt: "73721", patient_name: "Marcus Lindqvist", input: { note: "secret note", patient: { phone: "+14155550113" } } }));
-    expect(created).toEqual([{ eventTypeId: 2000, dataType: "string", timestamp: 1791748800, data: "Aetna 73721" }]);
+    expect(created).toEqual([{ eventTypeId: 2017, dataType: "string", timestamp: 1791748800, data: "live" }, { eventTypeId: 2000, dataType: "string", timestamp: 1791748800, data: "Aetna 73721" }]);
     expect(JSON.stringify(created)).not.toMatch(/Lindqvist|secret|4155550113/);
     expect(mapLedgerEvent(ev("call.ended", { duration_seconds: 63, transcript: [{ text: "PHI" }] }))[0]).toMatchObject({ eventTypeId: 2006, dataType: "uint", data: 63 });
     expect(mapLedgerEvent(ev("review.completed", { review_seconds: 31 }))[0]).toMatchObject({ eventTypeId: 2016, data: 31 });
@@ -38,6 +38,36 @@ describe("keewano catalog", () => {
         expect(CATALOG.find((c) => c.eventTypeId === k.eventTypeId)?.dataType).toBe(k.dataType);
       }
     }
+  });
+});
+
+describe("synthetic backfill", () => {
+  it("is deterministic, clearly tagged synthetic, uses only catalog types, and stays in the past", async () => {
+    const { buildSyntheticCases, summarize } = await import("./backfill.js");
+    const a = buildSyntheticCases(40);
+    const b = buildSyntheticCases(40);
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+    const anchor = Date.parse("2026-10-11T00:00:00Z") / 1000;
+    for (const c of a) {
+      expect(c.case_id).toMatch(/^synthetic_\d{3}$/);
+      expect(c.installId).toBe(caseUuid(c.case_id));
+      expect(c.events[0]).toMatchObject({ eventTypeId: 2017, data: "synthetic" });
+      for (const e of c.events) {
+        expect(CATALOG.find((k) => k.eventTypeId === e.eventTypeId)?.dataType).toBe(e.dataType);
+        expect(e.timestamp).toBeLessThan(anchor + 86400);
+      }
+      expect(c.events.at(-1)).toMatchObject({ eventTypeId: 2016, dataType: "uint" });
+    }
+    const s = summarize(a);
+    expect(s.cases).toBe(40);
+    expect(s.median_review_seconds).toBeGreaterThan(180);
+    expect(s.median_review_seconds).toBeLessThan(660);
+    expect(s.call_share).toBeGreaterThan(0.1);
+    expect(s.call_share).toBeLessThan(0.5);
+  });
+
+  it("live case.created is tagged origin=live", () => {
+    expect(mapLedgerEvent(ev("case.created", { insurer: "Aetna", cpt: "72148" }))[0]).toMatchObject({ eventTypeId: 2017, data: "live" });
   });
 });
 
@@ -59,9 +89,9 @@ describe("keewano sink", () => {
     const ingests = calls.filter((c) => c.url === INGEST_URL);
     expect(ingests).toHaveLength(2);
     expect(ingests[0].body).toMatchObject({ installId: caseUuid("pa_1"), customEventsHash: catalogHash(), batch: 1 });
-    expect(ingests[0].body.events).toHaveLength(2);
+    expect(ingests[0].body.events).toHaveLength(3);
     expect(ingests[1].body.batch).toBe(2);
-    expect(sink.stats).toMatchObject({ registered: true, sent_batches: 2, sent_events: 3, failed_batches: 0 });
+    expect(sink.stats).toMatchObject({ registered: true, sent_batches: 2, sent_events: 5, failed_batches: 0 });
   });
 
   it("is inert without a key", async () => {
@@ -119,6 +149,9 @@ describe("keewano insights", () => {
     app.ctx.ledger.appendEvent(id, "review.completed", { review_seconds: 600 }, "staff");
     const m = (await app.inject({ method: "GET", url: "/metrics" })).json();
     expect(m.minutes_saved_source).toBe("keewano");
+    expect(m.source).toBe("keewano"); // frontend alias
+    expect(m.as_of).toBe(m.keewano.as_of);
+    expect(m.keewano.median_review_s).toBe(60);
     expect(m.minutes_saved_total).toBe(23); // 1 case × (24 − 60 s/60), not (24 − 600 s/60)
     expect(m.keewano).toMatchObject({ status: "ok", label: "live from Keewano", call_share: 0.5, median_review_seconds: 60 });
     await app.close();
@@ -147,6 +180,9 @@ describe("keewano insights", () => {
     const app = await buildApp({ dbPath: ":memory:", logger: false });
     const m = (await app.inject({ method: "GET", url: "/metrics" })).json();
     expect(m.minutes_saved_source).toBe("local");
+    expect(m.source).toBe("local");
+    expect(m.as_of).toBeNull();
+    expect(m.keewano.median_review_s).toBeNull();
     expect(m.keewano).toMatchObject({ enabled: false, status: "disabled" });
     await app.close();
   });

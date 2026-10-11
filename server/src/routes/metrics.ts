@@ -16,13 +16,18 @@ export function computeMetrics(ctx: AppContext) {
   const kMedian = k.status === "ok" ? (k.data?.median_review_seconds ?? null) : null;
   const reviewSeconds = kMedian ?? avg;
   const minutes_saved_total = Math.max(0, Math.round(reviewed.length * (BASELINE_MINUTES - reviewSeconds / 60) * 10) / 10);
+  const source = kMedian != null ? ("keewano" as const) : ("local" as const);
   return {
-    minutes_saved_source: kMedian != null ? ("keewano" as const) : ("local" as const),
+    minutes_saved_source: source,
+    source, // alias read by the frontend
+    as_of: k.data?.as_of ?? null, // alias of keewano.as_of
     keewano: {
       enabled: k.enabled,
       status: k.status,
       label: "live from Keewano",
       median_review_seconds: k.data?.median_review_seconds ?? null,
+      median_review_s: k.data?.median_review_seconds ?? null, // alias read by the frontend
+      synthetic_cases: k.data?.synthetic_cases ?? 0,
       call_share: k.data?.call_share ?? null,
       cases_scored: k.data?.cases_scored ?? 0,
       cases_with_call: k.data?.cases_with_call ?? 0,
