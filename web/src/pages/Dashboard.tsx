@@ -1,11 +1,11 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
-import { ArrowRight, CheckCircle2, Clock, FilePlus2, RefreshCw, Timer, TrendingUp } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Clock, FilePlus2, GraduationCap, MoveRight, RefreshCw, Timer, TrendingDown, TrendingUp } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { api, queryKeys } from '@/api/client'
-import type { Metrics } from '@/api/types'
+import type { Learning, Metrics } from '@/api/types'
 import { useCases, useMetrics } from '@/hooks/useApi'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
@@ -40,7 +40,7 @@ function Kpi({
     <Card size="sm" className={cn(accent && 'ring-primary/30 bg-gradient-to-br from-teal-50/70 to-transparent dark:from-teal-950/40')}>
       <CardContent className="flex flex-col gap-1">
         <div className="text-muted-foreground flex items-center justify-between gap-2 text-[12.5px] font-medium">
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:flex-nowrap sm:whitespace-nowrap">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             {label}
             {badge}
           </span>
@@ -94,7 +94,51 @@ function KeewanoBadge({ m }: { m: Metrics }) {
           <div className="opacity-80">{asOf ? `As of ${fmtTime(asOf)} · ${fmtAgo(asOf)} · data lags about 5 min` : 'Refresh time unknown'}</div>
         </TooltipContent>
       </Tooltip>
+      {k.learning && <LearningChip l={k.learning} />}
     </span>
+  )
+}
+
+const pctOrDash = (v: number | null | undefined) => (v == null ? '—' : `${Math.round(v * 100)}%`)
+
+/** Self-improvement loop at a glance: lessons count + override-rate trend with vs without lessons. */
+function LearningChip({ l }: { l: NonNullable<Learning> }) {
+  const dir = l.trend?.direction
+  const Arrow = dir === 'improving' ? TrendingDown : dir === 'worse' ? TrendingUp : dir === 'flat' ? MoveRight : null
+  const tone = dir === 'improving' ? 'text-met-fg' : dir === 'worse' ? 'text-missing-fg' : 'text-muted-foreground'
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Link
+          to="/app/lessons"
+          className="inline-flex h-5 items-center gap-1 rounded-full bg-violet-50 px-2 text-[10.5px] font-semibold whitespace-nowrap text-violet-800 ring-1 ring-violet-200 ring-inset dark:bg-violet-950 dark:text-violet-200 dark:ring-violet-900"
+        >
+          <GraduationCap className="size-3" />
+          {l.lessons_count ?? 0} lesson{l.lessons_count === 1 ? '' : 's'}
+          {Arrow && <Arrow className={cn('size-3', tone)} />}
+        </Link>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs space-y-0.5">
+        <div className="font-semibold">Learning from reviewer corrections</div>
+        <div>
+          Override rate: {pctOrDash(l.override_rate)} ({l.cases_overridden ?? 0} of {l.cases_scored ?? 0} scored cases)
+        </div>
+        <div>
+          With lessons applied: {pctOrDash(l.trend?.with_lessons)} · without: {pctOrDash(l.trend?.without_lessons)}
+        </div>
+        <div className="opacity-80">
+          {dir === 'improving'
+            ? 'Fewer overrides when lessons are applied.'
+            : dir === 'worse'
+              ? 'More overrides with lessons applied; review the lessons.'
+              : dir === 'flat'
+                ? 'No difference yet.'
+                : 'Not enough cases with lessons applied to compare yet.'}
+          {l.source ? ` Source: ${l.source === 'keewano' ? 'Keewano' : 'local ledger'}.` : ''}
+        </div>
+        {l.note && <div className="opacity-80">{l.note}</div>}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

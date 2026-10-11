@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Clock, FilePlus2, LayoutDashboard, ListChecks, LogOut, Moon, Presentation, Stethoscope, Sun, Wifi, WifiOff } from 'lucide-react'
+import { Clock, FilePlus2, GraduationCap, LayoutDashboard, ListChecks, LogOut, Moon, Presentation, Stethoscope, Sun, Wifi, WifiOff } from 'lucide-react'
 import { signOut, useDemoUser } from '@/lib/auth'
 import { useTitle } from '@/hooks/useTitle'
 
@@ -10,6 +10,7 @@ function routeTitle(path: string): string {
   if (path === '/app') return 'Dashboard'
   if (path === '/cases') return 'Cases'
   if (path === '/new') return 'New case'
+  if (path === '/app/lessons') return 'Lessons learned'
   if (path.startsWith('/cases/')) return `Case ${path.split('/')[2] ?? ''}`
   return ''
 }
@@ -71,6 +72,7 @@ const NAV = [
   { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/cases', label: 'Cases', icon: ListChecks, end: false },
   { to: '/new', label: 'New case', icon: FilePlus2, end: false },
+  { to: '/app/lessons', label: 'Lessons', icon: GraduationCap, end: false },
 ]
 
 function useHtmlClass(cls: string, key: string, initial = false) {

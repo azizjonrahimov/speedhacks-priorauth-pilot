@@ -1,5 +1,11 @@
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
+import { useQuery } from '@tanstack/react-query'
+import { api, queryKeys } from '@/api/client'
 import {
+  ChevronDown,
+  GraduationCap,
+  TriangleAlert,
   Bot,
   CheckCircle2,
   FileCheck,
@@ -49,6 +55,8 @@ const ICON: Record<string, { Icon: LucideIcon; cls: string }> = {
   'patient.replied': { Icon: MessageSquareReply, cls: 'bg-primary text-primary-foreground' },
   'review.completed': { Icon: CheckCircle2, cls: 'bg-met-bg text-met-fg' },
   'case.closed': { Icon: CheckCircle2, cls: 'bg-slate-100 text-slate-700' },
+  'criterion.overridden': { Icon: UserCheck, cls: 'bg-violet-50 text-violet-700' },
+  'lessons.applied': { Icon: GraduationCap, cls: 'bg-violet-100 text-violet-800' },
 }
 
 const TITLE: Record<string, string> = {
@@ -75,6 +83,8 @@ const TITLE: Record<string, string> = {
   'patient.replied': 'Patient replied',
   'review.completed': 'Staff review complete',
   'case.closed': 'Case closed',
+  'criterion.overridden': 'Reviewer overrode a criterion',
+  'lessons.applied': 'Lessons applied',
 }
 
 function summarize(e: CaseEvent): string {
@@ -107,7 +117,14 @@ function summarize(e: CaseEvent): string {
     case 'call.retry_scheduled':
       return `attempt ${s('attempt')} in ${s('in_seconds')}s`
     case 'call.parsed':
-      return `${s('answers_count')} answer(s)`
+      return `${s('answers_count')} answer(s)${overstep(e) ? ' · agent overstepped its script (flagged, becomes a lesson)' : ''}`
+    case 'criterion.overridden':
+      return `${s('criterion_id')}: ${s('from_status').replace('_', ' ')} → ${s('to_status').replace('_', ' ')}${p.overall && p.overall_before && p.overall !== p.overall_before ? ` · overall ${s('overall_before').replace('_', ' ')} → ${s('overall').replace('_', ' ')}` : ''}${p.reason ? ` · “${s('reason')}”` : ''}`
+    case 'lessons.applied': {
+      const n = Number(p.count ?? (p.ids as unknown[] | undefined)?.length ?? 0)
+      const where = p.pass === 'call_script' ? 'to the physician call script' : 'to scoring'
+      return `System applied ${n} lesson${n === 1 ? '' : 's'} learned from earlier cases ${where}`
+    }
     case 'gap.unresolved':
       return `${(p.criterion_ids as string[] | undefined)?.length ?? ''} criteria still open`
     case 'gap.manual_answered':
@@ -133,6 +150,40 @@ function summarize(e: CaseEvent): string {
   }
 }
 
+function overstep(e: CaseEvent): boolean {
+  if (e.type !== 'call.parsed') return false
+  const o = (e.payload as { overstep?: { detected?: boolean } | boolean }).overstep
+  return typeof o === 'boolean' ? o : !!o?.detected
+}
+
+function LessonsApplied({ e }: { e: CaseEvent }) {
+  const [open, setOpen] = useState(false)
+  const lessons = useQuery({ queryKey: queryKeys.lessons, queryFn: api.lessons, enabled: open, staleTime: 30_000 })
+  const ids = ((e.payload as { ids?: unknown }).ids as string[] | undefined) ?? []
+  if (!ids.length) return null
+  const byId = new Map((lessons.data?.lessons ?? []).map((l) => [l.id, l]))
+  return (
+    <div className="mt-1.5">
+      <button type="button" onClick={() => setOpen((o) => !o)} className="text-primary inline-flex items-center gap-1 text-[12px] font-medium">
+        {open ? 'Hide' : 'Show'} lessons <ChevronDown className={cn('size-3.5 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <ul className="mt-1.5 space-y-1.5">
+          {ids.map((id) => {
+            const l = byId.get(id)
+            return (
+              <li key={id} className="bg-muted/60 rounded-md px-2.5 py-1.5 text-[12px] leading-snug">
+                {l ? l.summary : lessons.isLoading ? 'Loading…' : id}
+                {l && <span className="text-muted-foreground ml-1.5 text-[10.5px]">seen {l.count}×</span>}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export function TimelineTab({ events, loading }: { events: CaseEvent[] | undefined; loading: boolean }) {
   const list = [...(events ?? [])].sort((a, b) => b.seq - a.seq)
   return (
@@ -148,14 +199,21 @@ export function TimelineTab({ events, loading }: { events: CaseEvent[] | undefin
       <ol className="relative ml-3.5 border-l">
         <AnimatePresence initial={false}>
           {list.map((e) => {
-            const ic = ICON[e.type] ?? { Icon: Flag, cls: 'bg-slate-100 text-slate-700' }
+            const flagged = overstep(e)
+            const ic = flagged ? { Icon: TriangleAlert, cls: 'bg-unclear-bg text-unclear-fg' } : (ICON[e.type] ?? { Icon: Flag, cls: 'bg-slate-100 text-slate-700' })
+            const learning = e.type === 'lessons.applied' || e.type === 'criterion.overridden'
             const highlight = e.type === 'patient.notified' || e.type === 'patient.replied' || e.type === 'payer.responded'
             return (
               <motion.li key={e.seq} layout initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} className="relative mb-4 pl-7">
                 <span className={cn('absolute -left-[13px] top-0.5 flex size-6 items-center justify-center rounded-full ring-4 ring-background', ic.cls)}>
                   <ic.Icon className="size-3.5" />
                 </span>
-                <div className={cn('rounded-lg px-3 py-2 ring-1 ring-foreground/10', highlight ? 'bg-accent/70 ring-primary/30' : 'bg-card')}>
+                <div
+                  className={cn(
+                    'rounded-lg px-3 py-2 ring-1 ring-foreground/10',
+                    flagged ? 'bg-unclear-bg/60 ring-amber-300 dark:ring-amber-800' : learning ? 'bg-violet-50/70 ring-violet-200 dark:bg-violet-950/40 dark:ring-violet-900' : highlight ? 'bg-accent/70 ring-primary/30' : 'bg-card',
+                  )}
+                >
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-[13px] font-semibold">{TITLE[e.type] ?? e.type}</span>
                     <span className="text-muted-foreground tabular shrink-0 text-[11px]" title={e.at}>
@@ -163,6 +221,7 @@ export function TimelineTab({ events, loading }: { events: CaseEvent[] | undefin
                     </span>
                   </div>
                   {summarize(e) && <p className="text-muted-foreground mt-0.5 text-[12.5px]">{summarize(e)}</p>}
+                  {e.type === 'lessons.applied' && <LessonsApplied e={e} />}
                   <div className="text-muted-foreground/70 mt-1 flex gap-2 text-[10.5px] uppercase">
                     <span>{e.actor}</span>
                     <span>·</span>

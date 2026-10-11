@@ -15,11 +15,12 @@ import { AuthPage } from '@/pages/Auth'
 import { Pricing } from '@/pages/Pricing'
 import { About } from '@/pages/About'
 import { NotFound } from '@/pages/NotFound'
+import { Lessons } from '@/pages/Lessons'
 import { API_URL, USE_MOCK } from '@/api/client'
 
 const isAppPath = () => {
   const p = window.location.pathname
-  return p === '/app' || p === '/new' || p === '/cases' || p.startsWith('/cases/')
+  return p === '/app' || p.startsWith('/app/') || p === '/new' || p === '/cases' || p.startsWith('/cases/')
 }
 
 const queryClient = new QueryClient({
@@ -55,6 +56,7 @@ export default function App() {
             <Route element={<RequireAuth />}>
               <Route element={<AppShell />}>
                 <Route path="/app" element={<Dashboard />} />
+                <Route path="/app/lessons" element={<Lessons />} />
                 <Route path="/cases" element={<Cases />} />
                 <Route path="/new" element={<NewCase />} />
                 <Route path="/cases/:id" element={<CaseView />} />
