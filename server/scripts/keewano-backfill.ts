@@ -32,22 +32,21 @@ if (!apiKey) {
   process.exit(1);
 }
 
+// Per-case idempotency: skip every synthetic case whose entity Keewano already has (data is ~5 min behind,
+// so after a partial run wait a few minutes before re-running).
+const existing = new Set<string>();
 if (pat && !force) {
   try {
     const q = new KeewanoQueryClient(pat, process.env.KEEWANO_PROJECT_ID || null);
-    const r = await q.sql(`SELECT count(DISTINCT user_id) AS synthetic FROM events WHERE "PA Data Origin" = 'synthetic'`, 1);
-    const existing = Number(rowObject(r).synthetic ?? 0);
-    if (existing > 0) {
-      console.log(`already backfilled: Keewano has ${existing} synthetic case(s); nothing sent (use --force to resend)`);
-      process.exit(0);
-    }
+    const r = await q.sql(`SELECT user_id FROM events WHERE "PA Data Origin" = 'synthetic' GROUP BY user_id`, 1000);
+    for (const row of r.rows) existing.add(String(row[0]).toLowerCase());
+    console.log(`Keewano already has ${existing.size} synthetic case(s); they will be skipped`);
   } catch (e) {
     const msg = String((e as Error).message);
     if (!/unknown column/i.test(msg)) {
       console.log(`idempotency check failed (${msg.slice(0, 120)}); refusing to send without --force`);
       process.exit(1);
     }
-    // unknown column = nothing of ours ingested yet: safe to send
   }
 } else if (!pat && !force) {
   console.log("KEEWANO_PAT missing: cannot check for an earlier backfill; pass --force to send anyway");
@@ -62,13 +61,31 @@ if (reg.status >= 300) process.exit(1);
 const sessionId = randomUUID();
 let ok = 0;
 let failed = 0;
+let skipped = 0;
 for (const [i, c] of cases.entries()) {
-  const r = await fetchTransport(INGEST_URL, { installId: c.installId, dataSessionId: sessionId, batch: i + 1, customEventsHash: hash, events: c.events }, apiKey, 10_000);
-  if (r.status >= 200 && r.status < 300) ok++;
+  if (existing.has(c.installId.toLowerCase())) {
+    skipped++;
+    continue;
+  }
+  const body = { installId: c.installId, dataSessionId: sessionId, batch: i + 1, customEventsHash: hash, events: c.events };
+  let status = 0;
+  let detail = "";
+  for (let attempt = 1; attempt <= 2 && !(status >= 200 && status < 300); attempt++) {
+    try {
+      const r = await fetchTransport(INGEST_URL, body, apiKey, 20_000);
+      status = r.status;
+      detail = r.text.slice(0, 120);
+    } catch (e) {
+      status = 0;
+      detail = (e as Error).name === "AbortError" ? "timeout after 20 s" : String((e as Error).message).slice(0, 120);
+    }
+  }
+  if (status >= 200 && status < 300) ok++;
   else {
     failed++;
-    if (failed <= 3) console.log(`case ${c.case_id}: HTTP ${r.status} ${r.text.slice(0, 120)}`);
+    if (failed <= 3) console.log(`case ${c.case_id}: ${status ? `HTTP ${status}` : "network"} ${detail}`);
+    if (status === 401 || status === 403) break;
   }
 }
-console.log(`backfill done: ${ok} case(s) sent, ${failed} failed. Queryable in about 5 minutes; check with POST /keewano/refresh.`);
+console.log(`backfill done: ${ok} sent, ${skipped} skipped (already in Keewano), ${failed} failed. Queryable in about 5 minutes; check with POST /keewano/refresh.`);
 process.exit(failed ? 1 : 0);
