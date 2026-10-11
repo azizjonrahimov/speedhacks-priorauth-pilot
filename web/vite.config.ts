@@ -5,6 +5,13 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  resolve: { alias: { '@': path.resolve(__dirname, './src') } },
-  server: { port: 5173, strictPort: true },
+  resolve: { alias: { '@': path.resolve(import.meta.dirname, './src') } },
+  server: {
+    port: 5173,
+    strictPort: true,
+    // Same-origin API for any dev port: run with VITE_API_URL=/api to avoid needing CORS for that port.
+    proxy: {
+      '/api': { target: 'http://localhost:4000', changeOrigin: true, rewrite: (p) => p.replace(/^\/api/, '') },
+    },
+  },
 })
