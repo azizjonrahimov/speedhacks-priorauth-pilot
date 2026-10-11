@@ -1,0 +1,64 @@
+{
+  "notes": [
+    {
+      "id": "note-1-lumbar-meets",
+      "label": "1. Lumbar MRI — fully meets criteria",
+      "cpt": "72148",
+      "insurer": "Aetna",
+      "expect": "meets",
+      "patient": { "name": "Daniel Okafor", "dob": "1979-03-14", "member_id": "AET-448120933", "phone": "+14155550111" },
+      "physician": { "name": "Dr. Priya Raman", "npi": "1891234567", "phone": "+14155550100" },
+      "text": "CHIEF COMPLAINT: Low back pain radiating down the right leg.\n\nHISTORY OF PRESENT ILLNESS: 47-year-old male presents for follow-up of low back pain with right-sided radicular symptoms. Pain began approximately 10 weeks ago after lifting boxes at work. He describes sharp pain in the right buttock radiating down the posterior thigh and calf into the lateral foot, consistent with an S1 distribution. Pain is 7/10, worse with sitting and forward flexion. He denies saddle anesthesia, bowel or bladder dysfunction, fever, or unexplained weight loss. No history of cancer.\n\nTREATMENT TO DATE: Completed 8 weeks of conservative therapy beginning 07/28/2026: naproxen 500 mg twice daily, cyclobenzaprine 10 mg at bedtime, activity modification, and a formal physical therapy program at Bayview PT (12 sessions, 08/04/2026 through 09/22/2026) focused on core stabilization and McKenzie extension exercises. He reports no meaningful improvement despite full adherence.\n\nPHYSICAL EXAM: Positive straight leg raise on the right at 40 degrees. Diminished right ankle reflex (1+ compared with 2+ on the left). Mild weakness of right plantar flexion, 4/5. Decreased sensation to light touch along the lateral right foot. Gait antalgic. No clonus.\n\nASSESSMENT: Right S1 lumbar radiculopathy, likely L5-S1 disc herniation, refractory to 8 weeks of conservative management with objective neurologic deficit.\n\nPLAN: MRI lumbar spine without contrast (CPT 72148) to evaluate for disc herniation and nerve root compression and to guide possible epidural steroid injection or surgical referral. Continue home exercise program."
+    },
+    {
+      "id": "note-2-lumbar-red-flags",
+      "label": "2. Lumbar MRI — red flags (expedite)",
+      "cpt": "72148",
+      "insurer": "Aetna",
+      "expect": "red_flag",
+      "patient": { "name": "Teresa Villanueva", "dob": "1968-11-02", "member_id": "AET-770233184", "phone": "+14155550112" },
+      "physician": { "name": "Dr. Priya Raman", "npi": "1891234567", "phone": "+14155550100" },
+      "text": "CHIEF COMPLAINT: Acute worsening of low back pain with new urinary symptoms.\n\nHISTORY OF PRESENT ILLNESS: 57-year-old female with a 3-week history of low back pain radiating into both legs, which acutely worsened over the past 48 hours. Since yesterday she reports numbness in the perineal and inner thigh region (saddle anesthesia) and difficulty initiating urination with a sense of incomplete emptying. She also reports two episodes of urinary retention requiring straining, and new bilateral leg weakness making it hard to climb stairs. No fever. No history of cancer. She has taken ibuprofen 400 mg as needed for 2 weeks without relief.\n\nPHYSICAL EXAM: Decreased perianal sensation to pinprick. Diminished rectal tone. Bilateral lower extremity weakness: hip flexion 4/5, ankle dorsiflexion 4-/5 bilaterally. Absent ankle reflexes bilaterally. Post-void residual by bladder scan 420 mL.\n\nASSESSMENT: Clinical presentation highly concerning for cauda equina syndrome, suspected large central lumbar disc herniation.\n\nPLAN: Emergent MRI lumbar spine without contrast (CPT 72148) today. Neurosurgery notified. Patient instructed to proceed directly to imaging; if MRI is delayed she is to go to the emergency department."
+    },
+    {
+      "id": "note-3-knee-gap",
+      "label": "3. Knee MRI — therapy mentioned, no duration (gap → call)",
+      "cpt": "73721",
+      "insurer": "Aetna",
+      "expect": "gap",
+      "patient": { "name": "Marcus Lindqvist", "dob": "1991-06-23", "member_id": "AET-513980027", "phone": "+14155550113" },
+      "physician": { "name": "Dr. Priya Raman", "npi": "1891234567", "phone": "+14155550100" },
+      "text": "CHIEF COMPLAINT: Right knee pain and swelling.\n\nHISTORY OF PRESENT ILLNESS: 35-year-old male recreational soccer player presents with persistent right knee pain and intermittent swelling. He recalls a twisting injury during a game earlier this summer. Since then he has had medial knee pain, swelling after activity, and a sensation of the knee giving way on stairs. He denies true locking of the knee. No fever, no redness. He has been doing physical therapy and taking ibuprofen, and has been using a brace, but the symptoms have persisted.\n\nPHYSICAL EXAM: Moderate right knee effusion. Medial joint line tenderness. McMurray test positive medially with a palpable click. Lachman negative, posterior drawer negative. Range of motion 5 to 120 degrees, limited by pain. No warmth or erythema.\n\nIMAGING: Right knee x-rays, 3 views, obtained 09/15/2026: no fracture, no loose body, joint spaces preserved, small effusion.\n\nASSESSMENT: Suspected right medial meniscus tear with persistent effusion and instability.\n\nPLAN: MRI right knee without contrast (CPT 73721) to evaluate meniscus and ligaments. Continue physical therapy pending imaging."
+    },
+    {
+      "id": "note-4-wegovy-meets",
+      "label": "4. Wegovy — fully meets criteria",
+      "cpt": "WEGOVY",
+      "insurer": "Cigna",
+      "expect": "meets",
+      "patient": { "name": "Angela Moreau", "dob": "1984-09-30", "member_id": "CIG-0092837465", "phone": "+14155550114" },
+      "physician": { "name": "Dr. Samuel Achebe", "npi": "1720987654", "phone": "+14155550100" },
+      "text": "CHIEF COMPLAINT: Follow-up for obesity and hypertension; request for Wegovy.\n\nHISTORY OF PRESENT ILLNESS: 42-year-old female with class I obesity and hypertension. Height 5 ft 5 in, weight 198 lb, BMI 33.0 kg/m2 (baseline BMI 33.9 at program start). She enrolled in our structured weight-management program on 06/08/2026 and has participated for 4 months: a dietitian-supervised reduced-calorie diet (1,400 kcal/day), a walking program of 150 minutes per week, and biweekly behavioral counseling visits with documented attendance. Weight loss to date is 5 lb, which she finds discouraging. She is not taking any other GLP-1 agonist or weight-loss medication. Her hypertension is treated with lisinopril 20 mg daily and remains above goal at 142/88. No personal or family history of medullary thyroid carcinoma or MEN2. No history of pancreatitis.\n\nPHYSICAL EXAM: BP 142/88, HR 76. Weight 198 lb. BMI 33.0. Waist circumference 39 in.\n\nASSESSMENT: Obesity (BMI 33) with weight-related comorbidity (hypertension), inadequate response to 4 months of comprehensive lifestyle intervention.\n\nPLAN: Start Wegovy (semaglutide) 0.25 mg subcutaneously weekly with standard titration to 2.4 mg, as an adjunct to continued reduced-calorie diet and increased physical activity. Continue dietitian and behavioral counseling. Recheck weight and BP in 3 months."
+    },
+    {
+      "id": "note-5-psg-meets",
+      "label": "5. In-lab sleep study — meets criteria",
+      "cpt": "95810",
+      "insurer": "Aetna",
+      "expect": "meets",
+      "patient": { "name": "Robert Hashimoto", "dob": "1972-01-19", "member_id": "AET-662091140", "phone": "+14155550115" },
+      "physician": { "name": "Dr. Samuel Achebe", "npi": "1720987654", "phone": "+14155550100" },
+      "text": "CHIEF COMPLAINT: Excessive daytime sleepiness and loud snoring.\n\nHISTORY OF PRESENT ILLNESS: 54-year-old male referred for evaluation of suspected obstructive sleep apnea. He reports excessive daytime sleepiness for over a year, falling asleep at his desk and once while stopped at a traffic light; Epworth Sleepiness Scale score 16. His wife reports loud snoring every night and witnessed apneas, describing episodes where he stops breathing and then gasps. He has hypertension on amlodipine 10 mg daily. No history of COPD, heart failure, stroke, or opioid use. He has not had a home sleep apnea test.\n\nPHYSICAL EXAM: Height 5 ft 10 in, weight 328 lb, BMI 47.1 kg/m2. Neck circumference 19 in. Mallampati class IV. BP 148/92. Oxygen saturation 95% on room air.\n\nASSESSMENT: High pretest probability of moderate to severe obstructive sleep apnea. Super obesity with BMI 47.1 makes home sleep apnea testing inappropriate and favors attended in-laboratory polysomnography.\n\nPLAN: Attended in-lab polysomnography (CPT 95810) with split-night protocol if criteria met. Sleep hygiene counseling. Follow-up after study for CPAP titration."
+    },
+    {
+      "id": "note-6-ct-abdomen-gap",
+      "label": "6. CT abdomen/pelvis — labs done, no ultrasound (gap)",
+      "cpt": "74177",
+      "insurer": "BCBS South Carolina",
+      "expect": "gap",
+      "patient": { "name": "Lillian Mbeki", "dob": "1963-05-08", "member_id": "BCSC-33410927", "phone": "+14155550116" },
+      "physician": { "name": "Dr. Samuel Achebe", "npi": "1720987654", "phone": "+14155550100" },
+      "text": "CHIEF COMPLAINT: Right upper quadrant abdominal pain for 3 weeks.\n\nHISTORY OF PRESENT ILLNESS: 63-year-old female with 3 weeks of intermittent right upper quadrant pain radiating to the right flank and lower abdomen, worse after fatty meals, with nausea and early satiety. She reports a 6-lb unintentional weight loss over 2 months. No fever, no jaundice noticed by patient. Bowel movements normal. No hematuria.\n\nPHYSICAL EXAM: Afebrile. Mild right upper quadrant tenderness without rebound or guarding. No palpable mass. Abdomen soft, non-distended. No peritoneal signs.\n\nLABORATORY DATA (10/06/2026): CBC: WBC 8.9, hemoglobin 12.1. Comprehensive metabolic panel: AST 68 (elevated), ALT 74 (elevated), alkaline phosphatase 156 (elevated), total bilirubin 1.4 (mildly elevated). Lipase 42 (normal). Urinalysis negative.\n\nASSESSMENT: Right upper quadrant pain with mildly elevated liver enzymes and weight loss. Differential includes cholelithiasis with choledocholithiasis, hepatic lesion, and pancreaticobiliary process.\n\nPLAN: CT abdomen and pelvis with contrast (CPT 74177) to evaluate the hepatobiliary system, pancreas, and lower abdomen. Repeat liver panel in 2 weeks. Gastroenterology referral."
+    }
+  ]
+}

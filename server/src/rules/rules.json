@@ -1,0 +1,359 @@
+{
+  "policies": [
+    {
+      "insurer": "Aetna",
+      "cpt": "72148",
+      "label": "MRI lumbar spine without contrast",
+      "policy_id": "Aetna CPB 0236",
+      "url": "https://www.aetna.com/cpb/medical/data/200_299/0236.html",
+      "pa_required": true,
+      "source_note": "Aetna Clinical Policy Bulletin 0236: MRI and CT of the Spine. Criteria quoted from the policy; red flags are the stand-alone indications that do not require a conservative-therapy trial.",
+      "red_flag_keywords": [
+        "saddle anesthesia",
+        "urinary retention",
+        "bowel incontinence",
+        "bladder incontinence",
+        "bowel or bladder",
+        "cauda equina",
+        "foot drop",
+        "progressive weakness",
+        "rapidly progressive",
+        "fever",
+        "iv drug",
+        "intravenous drug",
+        "history of cancer",
+        "known malignancy",
+        "metastatic",
+        "unexplained weight loss",
+        "trauma",
+        "fracture"
+      ],
+      "criteria": [
+        {
+          "id": "aetna-72148-c1",
+          "kind": "symptom",
+          "group": "all_of",
+          "params": {},
+          "text": "Low back pain with radiculopathy: radicular leg pain in a nerve root (dermatomal) distribution.",
+          "question_if_missing": "Does the patient have radiating leg pain in a nerve root distribution, for example pain going below the knee into the calf or foot?"
+        },
+        {
+          "id": "aetna-72148-c2",
+          "kind": "objective_finding",
+          "group": "all_of",
+          "params": {},
+          "text": "Pain plus objective findings of motor or reflex changes in the specific nerve root distribution.",
+          "question_if_missing": "On exam, were there objective neurological findings such as a diminished or absent reflex, motor weakness, or sensory loss in a specific nerve root distribution?"
+        },
+        {
+          "id": "aetna-72148-c3",
+          "kind": "conservative_therapy_duration",
+          "group": "all_of",
+          "params": { "min_weeks": 6 },
+          "text": "No improvement after 6 weeks of conservative therapy (conservative therapy = moderate activity, analgesics, non-steroidal anti-inflammatory drugs, muscle relaxants).",
+          "question_if_missing": "How many weeks of conservative therapy has the patient completed, such as NSAIDs, analgesics, muscle relaxants, activity modification, or physical therapy, and over what dates?"
+        },
+        {
+          "id": "aetna-72148-r1",
+          "kind": "red_flag",
+          "group": "red_flag_any_of",
+          "params": {},
+          "text": "Clinical suspicion of a spinal cord or cauda equina compression syndrome (e.g., saddle anesthesia, new bowel or bladder dysfunction, urinary retention, bilateral leg weakness).",
+          "question_if_missing": null
+        },
+        {
+          "id": "aetna-72148-r2",
+          "kind": "red_flag",
+          "group": "red_flag_any_of",
+          "params": {},
+          "text": "Rapidly progressing neurological deficit, or major motor weakness.",
+          "question_if_missing": null
+        },
+        {
+          "id": "aetna-72148-r3",
+          "kind": "red_flag",
+          "group": "red_flag_any_of",
+          "params": {},
+          "text": "Suspected infectious process (e.g., osteomyelitis, epidural abscess of the spine or soft tissue), such as back pain with fever or intravenous drug use.",
+          "question_if_missing": null
+        },
+        {
+          "id": "aetna-72148-r4",
+          "kind": "red_flag",
+          "group": "red_flag_any_of",
+          "params": {},
+          "text": "Primary spinal bone tumors or suspected vertebral, paraspinal, or intraspinal metastases (e.g., new back pain with a history of cancer or unexplained weight loss).",
+          "question_if_missing": null
+        },
+        {
+          "id": "aetna-72148-r5",
+          "kind": "red_flag",
+          "group": "red_flag_any_of",
+          "params": {},
+          "text": "Suspected spinal fracture and/or dislocation secondary to trauma (if plain films are not conclusive).",
+          "question_if_missing": null
+        }
+      ]
+    },
+    {
+      "insurer": "Aetna",
+      "cpt": "73721",
+      "label": "MRI knee (lower extremity joint) without contrast",
+      "policy_id": "Aetna CPB 0171",
+      "url": "https://www.aetna.com/cpb/medical/data/100_199/0171.html",
+      "pa_required": true,
+      "source_note": "Aetna Clinical Policy Bulletin 0171: MRI of the Extremities (knee section), last reviewed 03/31/2026.",
+      "red_flag_keywords": ["locked knee", "true locking", "osteomyelitis", "septic", "tumor", "mass", "malignancy", "fever"],
+      "criteria": [
+        {
+          "id": "aetna-73721-c1",
+          "kind": "symptom",
+          "group": "all_of",
+          "params": {},
+          "text": "Persistent knee pain, swelling, and/or instability (giving way).",
+          "question_if_missing": "Is the patient's knee pain persistent, and is there swelling or instability such as the knee giving way?"
+        },
+        {
+          "id": "aetna-73721-c2",
+          "kind": "conservative_therapy_duration",
+          "group": "all_of",
+          "params": { "min_weeks": 3 },
+          "text": "Not responding to at least 3 weeks of conservative therapy (conservative therapy consists of a combination of rest, ice, compression, elevation, plus NSAIDs and/or physical therapy).",
+          "question_if_missing": "What conservative treatment has the patient tried for the knee, such as rest, ice, NSAIDs, bracing or physical therapy, and for how many weeks, with approximate start and end dates?"
+        },
+        {
+          "id": "aetna-73721-c3",
+          "kind": "lab_or_imaging_done",
+          "group": "all_of",
+          "params": { "modality": "x-ray" },
+          "text": "Multi-view x-rays have been obtained and have ruled out a fracture or loose body in the knee.",
+          "question_if_missing": "Were plain x-rays of the knee obtained, and did they rule out a fracture or loose body?"
+        },
+        {
+          "id": "aetna-73721-r1",
+          "kind": "red_flag",
+          "group": "red_flag_any_of",
+          "params": {},
+          "text": "Persistent true locking of the knee indicative of a torn meniscus or loose body (more than a momentary locking of the joint with the knee in a flexed position).",
+          "question_if_missing": null
+        },
+        {
+          "id": "aetna-73721-r2",
+          "kind": "red_flag",
+          "group": "red_flag_any_of",
+          "params": {},
+          "text": "Suspected bone infection (i.e., osteomyelitis) or septic joint.",
+          "question_if_missing": null
+        },
+        {
+          "id": "aetna-73721-r3",
+          "kind": "red_flag",
+          "group": "red_flag_any_of",
+          "params": {},
+          "text": "Detection, staging, and post-treatment evaluation of tumor of the knee.",
+          "question_if_missing": null
+        }
+      ]
+    },
+    {
+      "insurer": "Aetna",
+      "cpt": "95810",
+      "label": "Polysomnography, attended in-lab (6+ hours)",
+      "policy_id": "Aetna CPB 0004",
+      "url": "https://www.aetna.com/cpb/medical/data/1_99/0004.html",
+      "pa_required": true,
+      "source_note": "Aetna Clinical Policy Bulletin 0004: Obstructive Sleep Apnea in Adults. Attended in-lab NPSG is covered when symptoms suggest OSA and a listed condition makes home testing inappropriate.",
+      "red_flag_keywords": ["hypercapnia", "respiratory failure", "oxygen saturation below", "cor pulmonale"],
+      "criteria": [
+        {
+          "id": "aetna-95810-c1",
+          "kind": "symptom",
+          "group": "all_of",
+          "params": {},
+          "text": "Symptoms suggestive of obstructive sleep apnea: excessive daytime sleepiness and at least two of the following three: loud snoring, witnessed apneas or choking/gasping during sleep, diagnosed hypertension.",
+          "question_if_missing": "Does the patient have excessive daytime sleepiness, and which of the following are present: loud snoring, witnessed apneas or gasping during sleep, or a diagnosis of hypertension?"
+        },
+        {
+          "id": "aetna-95810-c2",
+          "kind": "bmi_threshold",
+          "group": "any_of",
+          "params": { "min_bmi": 45, "exclusive": true },
+          "text": "Super obesity (BMI greater than 45), or pulmonary function studies show obesity hypoventilation syndrome.",
+          "question_if_missing": "What is the patient's current BMI, or height and weight?"
+        },
+        {
+          "id": "aetna-95810-c3",
+          "kind": "comorbidity",
+          "group": "any_of",
+          "params": {},
+          "text": "Moderate to severe pulmonary disease (for example, COPD or asthma) requiring nocturnal oxygen, or daytime hypercapnia (pCO2 above 45) on blood gas.",
+          "question_if_missing": "Does the patient have moderate to severe COPD or asthma requiring nocturnal oxygen, or documented daytime hypercapnia?"
+        },
+        {
+          "id": "aetna-95810-c4",
+          "kind": "comorbidity",
+          "group": "any_of",
+          "params": {},
+          "text": "Neuromuscular disease, stroke with residual respiratory effects, epilepsy, congestive heart failure (NYHA class III or IV, or LVEF below 45%), pulmonary hypertension, or chronic opioid medication use.",
+          "question_if_missing": "Does the patient have neuromuscular disease, prior stroke, epilepsy, congestive heart failure, pulmonary hypertension, or chronic opioid use?"
+        },
+        {
+          "id": "aetna-95810-c5",
+          "kind": "lab_or_imaging_done",
+          "group": "any_of",
+          "params": { "modality": "home sleep apnea test" },
+          "text": "A single home sleep apnea test was negative, inconclusive, or technically inadequate.",
+          "question_if_missing": "Has the patient had a home sleep apnea test, and if so was it negative, inconclusive, or technically inadequate?"
+        }
+      ]
+    },
+    {
+      "insurer": "Cigna",
+      "cpt": "WEGOVY",
+      "label": "Wegovy (semaglutide 2.4 mg) for chronic weight management — pharmacy PA, NDC 0169-4525-14, no CPT",
+      "policy_id": "Cigna CNF 684 (IP0206)",
+      "url": "https://v.static.cigna.com/assets/chcp/pdf/coveragePolicies/cnf/cnf_684_coveragepositioncriteria_weight_loss_glp1_agonists_pa.pdf",
+      "pa_required": true,
+      "source_note": "Cigna Weight Loss – GLP-1 Agonists Prior Authorization policy (CNF 684). The PDF was unreachable on 2026-10-11; criteria transcribed from Cigna's published summaries of the same policy (secondary source).",
+      "red_flag_keywords": [],
+      "criteria": [
+        {
+          "id": "cigna-wegovy-c1",
+          "kind": "age_threshold",
+          "group": "all_of",
+          "params": { "min_age": 18 },
+          "text": "Individual is 18 years of age or older.",
+          "question_if_missing": "How old is the patient?"
+        },
+        {
+          "id": "cigna-wegovy-c2",
+          "kind": "bmi_threshold",
+          "group": "all_of",
+          "params": { "min_bmi": 30, "alt_min_bmi": 27, "alt_requires_comorbidity": true },
+          "text": "Initial body mass index (BMI) of 30 kg/m2 or greater (obese), or 27 kg/m2 or greater (overweight) in the presence of at least one weight-related comorbid condition.",
+          "question_if_missing": "What was the patient's baseline BMI, or height and weight, at the start of treatment?"
+        },
+        {
+          "id": "cigna-wegovy-c3",
+          "kind": "comorbidity",
+          "group": "all_of",
+          "params": { "required_only_if_bmi_below": 30 },
+          "text": "Weight-related comorbid condition documented (e.g., hypertension, dyslipidemia, type 2 diabetes mellitus, obstructive sleep apnea, cardiovascular disease). Required when BMI is 27 to 29.9.",
+          "question_if_missing": "Does the patient have a weight-related comorbidity such as hypertension, dyslipidemia, type 2 diabetes, sleep apnea, or cardiovascular disease?"
+        },
+        {
+          "id": "cigna-wegovy-c4",
+          "kind": "conservative_therapy_duration",
+          "group": "all_of",
+          "params": { "min_weeks": 13 },
+          "text": "Documented participation in a comprehensive weight-management program including a reduced-calorie diet, increased physical activity, and behavioral modification for at least 3 months prior to the request.",
+          "question_if_missing": "How long has the patient participated in a structured diet, exercise, and behavioral weight-management program, and when did it start?"
+        },
+        {
+          "id": "cigna-wegovy-c5",
+          "kind": "plan_of_care",
+          "group": "all_of",
+          "params": {},
+          "text": "The medication will be used as an adjunct to a reduced-calorie diet and increased physical activity, and will not be used in combination with another GLP-1 agonist or weight-loss medication.",
+          "question_if_missing": "Will Wegovy be used together with continued diet and exercise, and is the patient on any other GLP-1 or weight-loss medication?"
+        }
+      ]
+    },
+    {
+      "insurer": "Aetna",
+      "cpt": "97110",
+      "label": "Therapeutic exercise (physical therapy), each 15 min",
+      "policy_id": "Aetna CPB 0325",
+      "url": "https://www.aetna.com/cpb/medical/data/300_399/0325.html",
+      "pa_required": true,
+      "source_note": "Aetna Clinical Policy Bulletin 0325: Physical Therapy. 97110 is covered when the general PT selection criteria are met.",
+      "red_flag_keywords": [],
+      "criteria": [
+        {
+          "id": "aetna-97110-c1",
+          "kind": "objective_finding",
+          "group": "all_of",
+          "params": {},
+          "text": "Physical therapy is intended to significantly improve, develop or restore physical functions lost or impaired as a result of a disease, injury or surgical procedure, with the functional loss documented by physical measures (e.g., range of motion, strength, gait, functional scale).",
+          "question_if_missing": "What objective functional deficits were measured, such as range of motion, strength, gait or a functional outcome score?"
+        },
+        {
+          "id": "aetna-97110-c2",
+          "kind": "plan_of_care",
+          "group": "all_of",
+          "params": {},
+          "text": "PT must be provided in accordance with an ongoing, written plan of care of sufficient detail, including appropriate objective and subjective data, frequency, duration, and measurable goals.",
+          "question_if_missing": "Is there a written plan of care with frequency, duration, and measurable goals, and what are they?"
+        },
+        {
+          "id": "aetna-97110-c3",
+          "kind": "plan_of_care",
+          "group": "all_of",
+          "params": {},
+          "text": "There must be a reasonable expectation that the member's condition will improve significantly in a reasonable and generally predictable period of time; therapy that is neither regressing nor improving (maintenance) is not covered.",
+          "question_if_missing": "What is the expected improvement and over what time frame?"
+        },
+        {
+          "id": "aetna-97110-c4",
+          "kind": "plan_of_care",
+          "group": "all_of",
+          "params": {},
+          "text": "Services must be of the complexity and nature to require that they are performed by a licensed professional therapist (skilled need), not a home exercise program alone.",
+          "question_if_missing": "Why does the patient require skilled therapist-delivered treatment rather than a home exercise program?"
+        }
+      ]
+    },
+    {
+      "insurer": "BCBS South Carolina",
+      "cpt": "74177",
+      "label": "CT abdomen and pelvis with contrast",
+      "policy_id": "BCBS SC CAM 717",
+      "url": "https://medicalpolicy.southcarolinablues.com/web/public/brands/medicalpolicy/external-policies/ct-abdomen/",
+      "pa_required": true,
+      "source_note": "BlueCross BlueShield of South Carolina CAM 717: CT Abdomen (and CT Abdomen/Pelvis), reviewed 02/18/2026. Ultrasound-first language applies to biliary, hepatic and pancreatic indications.",
+      "red_flag_keywords": ["peritonitis", "rigid abdomen", "rebound", "perforation", "obstruction", "free air", "hemodynamically unstable", "sepsis", "malignancy", "staging"],
+      "criteria": [
+        {
+          "id": "bcbssc-74177-c1",
+          "kind": "symptom",
+          "group": "all_of",
+          "params": {},
+          "text": "Clinical indication involves both the abdomen and pelvis (e.g., acute abdominal pain, widespread inflammatory disease, or neoplasm), so CT abdomen/pelvis (74176-74178) is the correct study rather than abdomen or pelvis alone.",
+          "question_if_missing": "What is the clinical question, and does it involve both the abdomen and the pelvis?"
+        },
+        {
+          "id": "bcbssc-74177-c2",
+          "kind": "lab_or_imaging_done",
+          "group": "all_of",
+          "params": { "modality": "labs" },
+          "text": "Initial clinical evaluation is documented: recent pertinent office visit notes with physical exam and laboratory data (e.g., CBC, liver function tests, lipase, urinalysis).",
+          "question_if_missing": "What laboratory work has been done, such as CBC, liver function tests, lipase or urinalysis, and what were the results?"
+        },
+        {
+          "id": "bcbssc-74177-c3",
+          "kind": "lab_or_imaging_done",
+          "group": "all_of",
+          "params": { "modality": "ultrasound" },
+          "text": "For right upper quadrant pain with suspected biliary disease, jaundice, or abnormal liver function tests: ultrasound was performed first and was negative or equivocal. CT can be considered without prior ultrasound only when ultrasound is limited by body habitus/BMI or another guideline criterion is met.",
+          "question_if_missing": "Has an abdominal ultrasound been performed? If yes, what did it show? If not, was there a reason it was skipped, such as body habitus?"
+        },
+        {
+          "id": "bcbssc-74177-r1",
+          "kind": "red_flag",
+          "group": "red_flag_any_of",
+          "params": {},
+          "text": "Suspected acute surgical abdomen: peritoneal signs, suspected perforation, bowel obstruction, abscess, or hemodynamic instability.",
+          "question_if_missing": null
+        },
+        {
+          "id": "bcbssc-74177-r2",
+          "kind": "red_flag",
+          "group": "red_flag_any_of",
+          "params": {},
+          "text": "Known or suspected malignancy requiring initial staging (CT abdomen and pelvis is the more appropriate study for initial staging of the majority of cancers).",
+          "question_if_missing": null
+        }
+      ]
+    }
+  ]
+}
