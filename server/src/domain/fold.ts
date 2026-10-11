@@ -93,6 +93,11 @@ export function foldCase(events: LedgerEvent[]): CaseDetail | null {
         if (p.expedited) c.expedited = true;
         c.gaps = gapsFromCriteria(c.criteria, c.gaps);
         break;
+      case "criterion.overridden":
+        c.criteria = (p.criteria as Criterion[]) ?? c.criteria;
+        c.overall = (p.overall as Overall) ?? c.overall;
+        c.gaps = gapsFromCriteria(c.criteria, c.gaps);
+        break;
       case "gap.question_generated": {
         const g = c.gaps.find((x) => x.criterion_id === p.criterion_id);
         if (g) g.question = String(p.question);

@@ -37,6 +37,9 @@ export const CATALOG: CustomEventType[] = [
   { eventTypeId: 2016, name: "PA Review Seconds", dataType: "uint" },
   // "live" for real cases, "synthetic" for backfilled history; lets every query separate the two.
   { eventTypeId: 2017, name: "PA Data Origin", dataType: "string" },
+  // Self-improvement loop (append-only additions)
+  { eventTypeId: 2018, name: "PA Criterion Override", dataType: "string" }, // "<policy>|<criterion>|<from>><to>"
+  { eventTypeId: 2019, name: "PA Lessons Applied", dataType: "uint" }, // lessons injected into a scoring pass / call script
 ];
 
 const byId = new Map(CATALOG.map((c) => [c.eventTypeId, c]));
@@ -139,6 +142,13 @@ export function mapLedgerEvent(ev: LedgerEvent): KeewanoEvent[] {
       break;
     case "review.completed":
       out.push(mk(2016, u(p.review_seconds)));
+      break;
+    case "criterion.overridden":
+      // no reason text (free text may contain PHI): only ids and statuses
+      out.push(mk(2018, s(`${p.policy_id ?? ""}|${p.criterion_id ?? ""}|${p.from_status ?? ""}>${p.to_status ?? ""}`, 256)));
+      break;
+    case "lessons.applied":
+      out.push(mk(2019, u(p.count)));
       break;
     default:
       break;

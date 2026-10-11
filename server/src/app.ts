@@ -19,11 +19,13 @@ import { wireInboundMessages } from "./notify/patient.js";
 import { KeewanoSink } from "./keewano/sink.js";
 import { KeewanoInsights } from "./keewano/insights.js";
 import { KeewanoQueryClient } from "./keewano/query.js";
+import { LessonsStore } from "./learning/lessons.js";
 
 export interface AppContext {
   ledger: Ledger;
   dial: DialService;
   keewano: { sink: KeewanoSink; insights: KeewanoInsights };
+  lessons: LessonsStore;
 }
 
 export async function buildApp(
@@ -52,7 +54,11 @@ export async function buildApp(
   const insights =
     opts.keewanoInsights ?? new KeewanoInsights(new KeewanoQueryClient(opts.logger === false ? "" : config.keewanoPat, config.keewanoProjectId || null), app.log);
   ledger.bus.on("event", sink.onLedgerEvent);
-  const ctx: AppContext = { ledger, dial, keewano: { sink, insights } };
+  // Lessons are derived data: rebuilt from the full ledger at boot, then updated on every appended event.
+  const lessons = new LessonsStore(ledger);
+  lessons.rebuild();
+  lessons.attach();
+  const ctx: AppContext = { ledger, dial, keewano: { sink, insights }, lessons };
   (app as unknown as { ctx: AppContext }).ctx = ctx;
 
   await app.register(cors, { origin: config.corsOrigins, methods: ["GET", "POST", "OPTIONS"] });

@@ -18,8 +18,14 @@ export interface StructuredCall<T> {
   schema: z.ZodType<T>;
   system: string;
   user: string;
+  /** Per-call context injected BEFORE the user content as its own block (e.g. learned "known pitfalls"),
+   *  so the static system prompt + tool schema stay a stable, cacheable prefix. */
+  lessons?: string;
   maxTokens?: number;
 }
+
+/** Test seam: replace structured() without touching the network. */
+export const llmHooks: { structured?: <T>(call: StructuredCall<T>) => Promise<StructuredResult<T>> } = {};
 
 export interface StructuredResult<T> {
   data: T;
@@ -29,6 +35,7 @@ export interface StructuredResult<T> {
 }
 
 export async function structured<T>(call: StructuredCall<T>, log?: { warn: (o: object, m: string) => void }): Promise<StructuredResult<T>> {
+  if (llmHooks.structured) return llmHooks.structured(call);
   const anthropic = getClient();
   const input_schema = sanitizeSchema(z.toJSONSchema(call.schema, { target: "draft-7" })) as Anthropic.Tool["input_schema"];
 
@@ -41,11 +48,21 @@ export async function structured<T>(call: StructuredCall<T>, log?: { warn: (o: o
       const res = await anthropic.messages.create({
         model: config.anthropicModel,
         max_tokens: call.maxTokens ?? 8000,
-        system: `${call.system}\n\nOUTPUT RULE: You MUST respond by calling the tool "${call.toolName}" exactly once with input matching its schema. Do not answer in prose.`,
+        // Cached prefix = tools + this static system block. Lessons vary per policy, so they live in the user turn.
+        system: [
+          {
+            type: "text",
+            text: `${call.system}\n\nOUTPUT RULE: You MUST respond by calling the tool "${call.toolName}" exactly once with input matching its schema. Do not answer in prose.`,
+            cache_control: { type: "ephemeral" },
+          },
+        ],
         tools: [{ name: call.toolName, description: call.description, input_schema, ...(strict ? { strict: true } : {}) } as Anthropic.Tool],
         tool_choice: { type: "auto", disable_parallel_tool_use: true },
         messages: [
-          { role: "user", content: call.user },
+          {
+            role: "user",
+            content: call.lessons ? [{ type: "text" as const, text: call.lessons }, { type: "text" as const, text: call.user }] : call.user,
+          },
           ...(attempt > 1 && lastErr
             ? [
                 { role: "assistant" as const, content: `I will call the tool "${call.toolName}" now with input that matches the schema exactly.` },

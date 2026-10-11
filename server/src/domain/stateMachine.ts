@@ -54,6 +54,10 @@ const RULES: Record<EventType, Rule> = {
     to: same,
   },
   "case.closed": { from: ["approved", "denied", "pended"], to: () => "closed" },
+  // A reviewer may correct a criterion any time after scoring and before submission; state is unchanged
+  // (overall is recomputed in the payload, so packet.generated stays legal from needs_info as before).
+  "criterion.overridden": { from: ["evidence_scored", "needs_info", "evidence_rescored", "packet_ready"], to: same },
+  "lessons.applied": { from: "*", to: same },
 };
 
 export function nextState(current: State | null, type: EventType, payload: Payload = {}): State {

@@ -40,10 +40,12 @@ export const EVENT_TYPES = [
   "patient.replied",
   "review.completed",
   "case.closed",
+  "criterion.overridden",
+  "lessons.applied",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
-export type Actor = "system" | "staff" | "llm" | "dial" | "payer";
+export type Actor = "system" | "staff" | "llm" | "dial" | "payer" | "reviewer";
 
 export type Overall = "ready" | "needs_info" | "expedite" | "not_required";
 export type CriterionStatus = "met" | "missing" | "unclear" | "not_applicable";

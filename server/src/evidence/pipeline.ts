@@ -103,6 +103,7 @@ export async function scoreCriteria(
   rules: RuleCriterion[],
   patientDob: string | undefined,
   log?: Log,
+  lessons: AppliedLesson[] = [],
 ): Promise<{ criteria: Criterion[]; rejectedQuotes: { criterion_id: string; quote: string }[]; usage: object }> {
   const r = await structured(
     {
@@ -110,6 +111,7 @@ export async function scoreCriteria(
       description: "Record the status of every policy criterion.",
       schema: scoreCriteriaOutput,
       system: SCORE_SYSTEM,
+      lessons: pitfallsBlock(lessons),
       user: `CRITERIA (JSON):\n${JSON.stringify(
         rules.map((c) => ({ id: c.id, kind: c.kind, group: c.group, params: c.params, text: c.text })),
         null,
@@ -130,6 +132,21 @@ export async function scoreCriteria(
   return { criteria, rejectedQuotes, usage: r.usage };
 }
 
+/** A learned lesson as injected into scoring (subset of learning/lessons.ts Lesson). */
+export interface AppliedLesson {
+  id: string;
+  criterion_id: string;
+  summary: string;
+  count: number;
+}
+
+/** "Known pitfalls" block, few-shot style: one rule per lesson, tied to its criterion id. Undefined when none. */
+export function pitfallsBlock(lessons: AppliedLesson[]): string | undefined {
+  if (lessons.length === 0) return undefined;
+  const lines = lessons.map((l, i) => `${i + 1}. [${l.criterion_id}] ${l.summary} (seen ${l.count}x)`);
+  return `KNOWN PITFALLS FOR THIS POLICY (learned from reviewer corrections and verifier rejections on earlier cases; apply them, but the note is still the only source of evidence):\n${lines.join("\n")}`;
+}
+
 export interface ScoringResult {
   facts: Fact[];
   criteria: Criterion[];
@@ -138,22 +155,30 @@ export interface ScoringResult {
   expedited: boolean;
   rejectedQuotes: { criterion_id: string; quote: string }[];
   rejectedFacts: number;
+  lessonsApplied: string[]; // ids of the lessons injected into this scoring pass
   summary: { met: number; missing: number; unclear: number; not_applicable: number };
 }
 
 /** Full scoring from the note (pass 1 + pass 2 + verification + rules). */
-export async function scoreCase(c: CaseDetail, log?: Log): Promise<ScoringResult> {
+export async function scoreCase(c: CaseDetail, log?: Log, lessons: AppliedLesson[] = []): Promise<ScoringResult> {
   const policy = findPolicy(c.insurer, c.cpt);
   if (!policy) throw Object.assign(new Error(`no policy for ${c.insurer} ${c.cpt}`), { statusCode: 409, code: "no_policy" });
   const ex = await extractFacts(c.note, policy, log);
-  return rescoreWithFacts(c, ex.facts, policy, log, ex.rejected);
+  return rescoreWithFacts(c, ex.facts, policy, log, ex.rejected, lessons);
 }
 
 /** Pass 2 only, with a given fact set (used after phone-call / manual answers). */
-export async function rescoreWithFacts(c: CaseDetail, facts: Fact[], policy: Policy | null = null, log?: Log, rejectedFacts = 0): Promise<ScoringResult> {
+export async function rescoreWithFacts(
+  c: CaseDetail,
+  facts: Fact[],
+  policy: Policy | null = null,
+  log?: Log,
+  rejectedFacts = 0,
+  lessons: AppliedLesson[] = [],
+): Promise<ScoringResult> {
   const pol = policy ?? findPolicy(c.insurer, c.cpt);
   if (!pol) throw Object.assign(new Error(`no policy for ${c.insurer} ${c.cpt}`), { statusCode: 409, code: "no_policy" });
-  const sc = await scoreCriteria(c.note, facts, pol.criteria, c.patient.dob, log);
+  const sc = await scoreCriteria(c.note, facts, pol.criteria, c.patient.dob, log, lessons);
   const ev = evaluate(sc.criteria, pol.pa_required);
   // red_flags = short verbatim quotes only (keyword hits from screening + the evidence quote of each met red-flag criterion);
   // the full criterion sentence already lives on the criterion row.
@@ -167,6 +192,7 @@ export async function rescoreWithFacts(c: CaseDetail, facts: Fact[], policy: Pol
     expedited: ev.red_flags_met.length > 0 || c.expedited,
     rejectedQuotes: sc.rejectedQuotes,
     rejectedFacts,
+    lessonsApplied: lessons.map((l) => l.id),
     summary: { met: ev.met, missing: ev.missing, unclear: ev.unclear, not_applicable: ev.not_applicable },
   };
 }

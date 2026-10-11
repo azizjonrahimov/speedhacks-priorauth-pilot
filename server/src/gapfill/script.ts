@@ -10,7 +10,11 @@ function firstName(full: string) {
   return full.replace(/^dr\.?\s+/i, "").split(/\s+/)[0] ?? full;
 }
 
-export function buildCallScript(c: CaseDetail, gaps: Gap[], opts: { practiceName?: string } = {}): CallScript {
+export function buildCallScript(c: CaseDetail, gaps: Gap[], opts: { practiceName?: string; learnedRules?: string[] } = {}): CallScript {
+  const learned = (opts.learnedRules ?? []).slice(0, 3);
+  const learnedBlock = learned.length
+    ? `\n\nLEARNED FROM PREVIOUS CALLS (mandatory)\n- Do NOT state that you will document, note or record anything. Only repeat back what the physician said in their own words.\n- If a question has several parts (for example therapy, medication and home measures), ask about each part separately and accept "I don't know" for any part.\n${learned.map((r) => `- ${r}`).join("\n")}`
+    : "";
   const open = gaps.filter((g) => g.status === "open" || g.status === "unresolved");
   const questions = open.map((g, i) => ({ criterion_id: g.criterion_id, question: g.question.trim().replace(/\s+/g, " ") }));
   const practice = opts.practiceName ?? "the clinic";
@@ -38,7 +42,7 @@ RULES
 - Use the patient's name only once, in the context sentence.
 - Do not discuss anything outside these questions. If asked who you are, say you are an AI assistant used by the office staff for prior authorizations.
 - If you reach voicemail, leave this message and hang up: "Hello, this is the prior-authorization assistant from ${practice} regarding ${patient}'s ${procedure}. We need a few details for the ${insurer} authorization. Please call the office back. Thank you."
-- Keep the whole call under three minutes.`;
+- Keep the whole call under three minutes.${learnedBlock}`;
 
   return { instruction, questions };
 }

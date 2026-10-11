@@ -5,7 +5,8 @@ import type { AppContext } from "../app.js";
 import { config } from "../config.js";
 import { AppError, type CaseDetail, type Fact } from "../domain/types.js";
 import { rescoreWithFacts } from "../evidence/pipeline.js";
-import { recordScoring } from "../routes/evidence.js";
+import { lessonsForCase, recordScoring } from "../routes/evidence.js";
+import { detectOverstep } from "../learning/overstep.js";
 import { maskPhone } from "../util/redact.js";
 import { manualAnswersToFacts, parseTranscriptAnswers } from "./parse.js";
 import { buildCallScript } from "./script.js";
@@ -29,10 +30,13 @@ export async function startGapFillCall(ctx: AppContext, caseId: string, attempt:
   const to = config.physicianPhone || c.physician.phone;
   if (!to) throw new AppError(400, "bad_request", "no physician phone (set PHYSICIAN_PHONE in .env)");
 
-  const script = buildCallScript(c, gaps);
+  // Closed loop: rules learned from earlier calls under this policy go into this call's script.
+  const learned = c.screening ? ctx.lessons.forCalls(c.screening.policy.id) : [];
+  const script = buildCallScript(c, gaps, { learnedRules: learned.map((l) => l.summary) });
   const idempotencyKey = `${c.id}:gapfill:${attempt}`;
   const call = await dial.placeCall({ to, instruction: script.instruction, idempotencyKey, maxSeconds: 240 });
-  ledger.appendEvent(c.id, "call.placed", { call_id: call.id, attempt, to_masked: maskPhone(to), idempotency_key: idempotencyKey, questions: script.questions }, "dial");
+  if (learned.length) ledger.appendEvent(c.id, "lessons.applied", { ids: learned.map((l) => l.id), count: learned.length, policy_id: c.screening?.policy.id ?? null, pass: "call_script" }, "system");
+  ledger.appendEvent(c.id, "call.placed", { call_id: call.id, attempt, to_masked: maskPhone(to), idempotency_key: idempotencyKey, questions: script.questions, learned_rules: learned.length }, "dial");
   log.info({ case_id: c.id, call_id: call.id, attempt, to: maskPhone(to) }, "gap-fill call placed");
 
   void completeGapFillCall(ctx, c.id, call.id, attempt, script.questions, log).catch((e) => log.error({ case_id: c.id, error: String((e as Error).message).slice(0, 300) }, "gap-fill background failure"));
@@ -63,12 +67,13 @@ async function completeGapFillCall(ctx: AppContext, caseId: string, callId: stri
       const c = ledger.requireCase(caseId);
       const parsed = await parseTranscriptAnswers(ended.transcriptTurns, questions, callId, nextFactIndex(c), log);
       const facts: Fact[] = [...c.facts, ...parsed.facts];
-      ledger.appendEvent(caseId, "call.parsed", { call_id: callId, answers_count: parsed.answers.length, answers: parsed.answers, facts, transcript: ended.transcriptTurns }, "llm");
+      const overstep = detectOverstep(ended.transcriptTurns, parsed.answers);
+      ledger.appendEvent(caseId, "call.parsed", { call_id: callId, answers_count: parsed.answers.length, answers: parsed.answers, facts, transcript: ended.transcriptTurns, overstep }, "llm");
       if (parsed.answers.length === 0 && attempt < MAX_ATTEMPTS) {
         // physician reached but nothing usable (e.g. voicemail): treat like no-answer
         return scheduleRetryOrGiveUp(ctx, caseId, callId, attempt, "no_usable_answers", log);
       }
-      const r = await rescoreWithFacts({ ...c, facts }, facts, null, log);
+      const r = await rescoreWithFacts({ ...c, facts }, facts, null, log, 0, lessonsForCase(ctx, c));
       recordScoring(ctx, ledger.requireCase(caseId), r, "evidence.rescored");
       log.info({ case_id: caseId, overall: r.overall, answers: parsed.answers.length }, "rescored after call");
     } catch (e) {
@@ -113,7 +118,7 @@ export async function applyManualAnswers(ctx: AppContext, caseId: string, answer
   const newFacts = manualAnswersToFacts(valid, nextFactIndex(c));
   const facts = [...c.facts, ...newFacts];
   ledger.appendEvent(caseId, "gap.manual_answered", { criterion_ids: valid.map((a) => a.criterion_id), answers: valid, facts }, "staff");
-  const r = await rescoreWithFacts({ ...c, facts }, facts, null, log);
+  const r = await rescoreWithFacts({ ...c, facts }, facts, null, log, 0, lessonsForCase(ctx, c));
   recordScoring(ctx, ledger.requireCase(caseId), r, "evidence.rescored");
   return r;
 }
