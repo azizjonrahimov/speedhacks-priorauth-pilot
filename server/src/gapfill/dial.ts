@@ -20,23 +20,29 @@ export interface EndedCall {
   transcript: string | null;
 }
 
+/** The subset of DialClient we use; tests inject a fake. */
+export type DialClientLike = Pick<DialClientT, "makeCall" | "getCall" | "sendMessage" | "newEventsConnection">;
+
 export class DialService {
   readonly events = new EventEmitter();
-  private client: DialClientT | null = null;
+  private client: DialClientLike | null = null;
   private listening = false;
   private stopped = false;
   private log: Log;
+  private injected: DialClientLike | null;
 
-  constructor(log: Log) {
+  constructor(log: Log, client: DialClientLike | null = null) {
     this.log = log;
+    this.injected = client;
     this.events.setMaxListeners(50);
   }
 
   get available() {
-    return hasDial();
+    return this.injected != null || hasDial();
   }
 
-  private async getClient(): Promise<DialClientT> {
+  private async getClient(): Promise<DialClientLike> {
+    if (this.injected) return this.injected;
     if (!hasDial()) throw new AppError(503, "dial_unavailable", "DIAL_API_KEY / DIAL_FROM_NUMBER_ID missing in server/.env; use POST /cases/:id/gapfill/manual");
     if (!this.client) {
       const { DialClient } = await import("@getdial/sdk");

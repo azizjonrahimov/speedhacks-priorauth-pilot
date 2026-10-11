@@ -12,7 +12,7 @@ import { buildCallScript } from "./script.js";
 
 type Log = { info: (o: object, m: string) => void; warn: (o: object, m: string) => void; error: (o: object, m: string) => void };
 
-export const RETRY_DELAY_MS = Number(process.env.GAPFILL_RETRY_MS ?? 60_000);
+export const retryDelayMs = () => Number(process.env.GAPFILL_RETRY_MS ?? 60_000);
 export const MAX_ATTEMPTS = 2;
 
 function nextFactIndex(c: CaseDetail) {
@@ -87,7 +87,7 @@ async function completeGapFillCall(ctx: AppContext, caseId: string, callId: stri
 async function scheduleRetryOrGiveUp(ctx: AppContext, caseId: string, callId: string, attempt: number, reason: string, log: Log) {
   const { ledger } = ctx;
   if (attempt < MAX_ATTEMPTS) {
-    ledger.appendEvent(caseId, "call.retry_scheduled", { attempt: attempt + 1, in_seconds: Math.round(RETRY_DELAY_MS / 1000), after: reason }, "system");
+    ledger.appendEvent(caseId, "call.retry_scheduled", { attempt: attempt + 1, in_seconds: Math.round(retryDelayMs() / 1000), after: reason }, "system");
     setTimeout(() => {
       if (ledger.currentState(caseId) !== "calling") return;
       startGapFillCall(ctx, caseId, attempt + 1, log).catch((e) => {
@@ -95,7 +95,7 @@ async function scheduleRetryOrGiveUp(ctx: AppContext, caseId: string, callId: st
         const c = ledger.requireCase(caseId);
         if (ledger.currentState(caseId) === "calling") ledger.appendEvent(caseId, "gap.unresolved", { criterion_ids: c.gaps.filter((g) => g.status === "open").map((g) => g.criterion_id), reason: "retry_place_failed" }, "system");
       });
-    }, RETRY_DELAY_MS).unref();
+    }, retryDelayMs()).unref();
     return;
   }
   const c = ledger.requireCase(caseId);

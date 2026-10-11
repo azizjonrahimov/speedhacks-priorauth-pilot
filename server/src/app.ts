@@ -12,7 +12,7 @@ import { registerMiscRoutes } from "./routes/misc.js";
 import { registerEvidenceRoutes } from "./routes/evidence.js";
 import { registerGapfillRoutes } from "./routes/gapfill.js";
 import { registerPacketRoutes } from "./routes/packet.js";
-import { DialService } from "./gapfill/dial.js";
+import { DialService, type DialClientLike } from "./gapfill/dial.js";
 import { registerSubmitRoutes } from "./routes/submit.js";
 import { registerMetricsRoutes } from "./routes/metrics.js";
 import { wireInboundMessages } from "./notify/patient.js";
@@ -22,7 +22,7 @@ export interface AppContext {
   dial: DialService;
 }
 
-export async function buildApp(opts: { dbPath?: string; logger?: boolean } = {}): Promise<FastifyInstance & { ctx: AppContext }> {
+export async function buildApp(opts: { dbPath?: string; logger?: boolean; dialClient?: DialClientLike | null } = {}): Promise<FastifyInstance & { ctx: AppContext }> {
   const app = Fastify({
     logger:
       opts.logger === false
@@ -40,7 +40,7 @@ export async function buildApp(opts: { dbPath?: string; logger?: boolean } = {})
   });
 
   const ledger = new Ledger(opts.dbPath ?? config.dbPath);
-  const dial = new DialService(app.log);
+  const dial = new DialService(app.log, opts.dialClient ?? null);
   const ctx: AppContext = { ledger, dial };
   (app as unknown as { ctx: AppContext }).ctx = ctx;
 
