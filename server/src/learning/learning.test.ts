@@ -192,6 +192,52 @@ describe("4. closed loop into the call script", () => {
     for (let i = 0; i < 100 && app.ctx.ledger.currentState(b.id) === "calling"; i++) await new Promise((r) => setTimeout(r, 30));
   });
 
+});
+
+describe("5. learning metric", () => {
+  it("computes override rates with vs without lessons and a trend direction", async () => {
+    const { learningFrom } = await import("./metric.js");
+    const improving = learningFrom({ cases_scored: 40, cases_overridden: 10, cases_with_lessons: 20, overridden_with_lessons: 2 }, 4, "keewano");
+    expect(improving).toMatchObject({ override_rate: 0.25, lessons_count: 4, trend: { with_lessons: 0.1, without_lessons: 0.4, direction: "improving" } });
+    expect(learningFrom({ cases_scored: 2, cases_overridden: 1, cases_with_lessons: 1, overridden_with_lessons: 0 }, 1, "local").trend.direction).toBe("insufficient_data");
+    expect(learningFrom({ cases_scored: 0, cases_overridden: 0, cases_with_lessons: 0, overridden_with_lessons: 0 }, 0, "local").override_rate).toBeNull();
+  });
+
+  it("/metrics.keewano.learning falls back to the local ledger with the same definitions", async () => {
+    const m = (await app.inject({ method: "GET", url: "/metrics" })).json();
+    const l = m.keewano.learning;
+    expect(l.source).toBe("local");
+    expect(l.lessons_count).toBe(app.ctx.lessons.count());
+    expect(l.lessons_count).toBeGreaterThanOrEqual(2); // override + call_overstep
+    expect(l.cases_overridden).toBe(1);
+    expect(l.cases_with_lessons).toBeGreaterThanOrEqual(2);
+    expect(l.override_rate).toBeGreaterThan(0);
+  });
+
+  it("uses Keewano's counts when the learning columns exist there", async () => {
+    const { KeewanoInsights } = await import("../keewano/insights.js");
+    const { KeewanoQueryClient } = await import("../keewano/query.js");
+    const mcp = async (body: any) => {
+      if (body.method !== "tools/call") return { status: 200, json: { result: {} } };
+      const sql = String(body.params.arguments.sqlQuery);
+      const sc = /PA Criterion Override/.test(sql)
+        ? { columns: ["cases_overridden", "cases_scored", "cases_with_lessons", "overridden_with_lessons"].map((name) => ({ name })), rows: [[9, 45, 12, 1]] }
+        : /percentile_cont/.test(sql)
+          ? { columns: [{ name: "median_review_s" }, { name: "cases_reviewed" }], rows: [[290, 41]] }
+          : { columns: [{ name: "cases_with_call" }, { name: "cases_scored" }, { name: "synthetic_cases" }], rows: [[8, 45, 40]] };
+      return { status: 200, json: { result: { content: [], structuredContent: sc } } };
+    };
+    const ins = new KeewanoInsights(new KeewanoQueryClient("kwpat-x", "84af1714-b5e0-4b78-bc57-9e0c6b9b2587", mcp), { info: () => {}, warn: () => {} });
+    await ins.refreshAll();
+    expect(ins.state.learning).toEqual({ cases_scored: 45, cases_overridden: 9, cases_with_lessons: 12, overridden_with_lessons: 1 });
+    const app2 = await buildApp({ dbPath: ":memory:", logger: false, keewanoInsights: ins });
+    const l = (await app2.inject({ method: "GET", url: "/metrics" })).json().keewano.learning;
+    expect(l).toMatchObject({ source: "keewano", override_rate: 0.2, trend: { with_lessons: 0.083, without_lessons: 0.242, direction: "improving" } });
+    await app2.close();
+  });
+});
+
+describe("4b. call script", () => {
   it("buildCallScript without lessons is unchanged", () => {
     const c = app.ctx.ledger.requireCase(app.ctx.ledger.listCases()[0].id);
     expect(buildCallScript(c, c.gaps).instruction).not.toMatch(/LEARNED/);

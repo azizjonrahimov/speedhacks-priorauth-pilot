@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { AppContext } from "../app.js";
 import { canTransition } from "../domain/stateMachine.js";
 import { AppError } from "../domain/types.js";
+import { learningFrom, localLearningCounts } from "../learning/metric.js";
 
 export const BASELINE_MINUTES = 24;
 export const BASELINE_SOURCE = "CAQH Index: ~24 minutes of staff time per manual prior authorization; AMA 2023 survey: 40 PAs/physician/week, ~13 hours/week.";
@@ -17,6 +18,8 @@ export function computeMetrics(ctx: AppContext) {
   const reviewSeconds = kMedian ?? avg;
   const minutes_saved_total = Math.max(0, Math.round(reviewed.length * (BASELINE_MINUTES - reviewSeconds / 60) * 10) / 10);
   const source = kMedian != null ? ("keewano" as const) : ("local" as const);
+  const lessonsCount = ctx.lessons.count();
+  const learning = k.learning ? learningFrom(k.learning, lessonsCount, "keewano") : learningFrom(localLearningCounts(cases), lessonsCount, "local");
   return {
     minutes_saved_source: source,
     source, // alias read by the frontend
@@ -34,6 +37,7 @@ export function computeMetrics(ctx: AppContext) {
       cases_reviewed: k.data?.cases_reviewed ?? 0,
       as_of: k.data?.as_of ?? null,
       note: k.error,
+      learning: { ...learning, note: k.learning ? null : k.learning_error },
       ingest: { enabled: ctx.keewano.sink.enabled, sent_events: ctx.keewano.sink.stats.sent_events, failed_batches: ctx.keewano.sink.stats.failed_batches },
     },
     cases: cases.length,
@@ -57,7 +61,7 @@ export function registerMetricsRoutes(app: FastifyInstance, ctx: AppContext) {
   app.get("/metrics", async () => computeMetrics(ctx));
   // Force a Keewano refresh (demo button); returns the new insight state. Never blocks /metrics itself.
   app.post("/keewano/refresh", async () => {
-    await ctx.keewano.insights.refresh();
+    await ctx.keewano.insights.refreshAll();
     return { insights: ctx.keewano.insights.state, ingest: ctx.keewano.sink.stats };
   });
 

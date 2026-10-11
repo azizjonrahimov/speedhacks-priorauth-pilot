@@ -2,6 +2,7 @@
 // that needed a physician call. Cached; refreshed in the background; /metrics never waits on it.
 import type { KeewanoQueryClient } from "./query.js";
 import { rowObject } from "./query.js";
+import { LEARNING_SQL, type LearningCounts } from "../learning/metric.js";
 
 // Keewano SQL facts (verified live 2026-10-11): FILTER only works on count/sum/avg/min/max/variance/stddev,
 // and IS NULL is unsupported. Columns are step functions held forward, so the median is pinned to the moment
@@ -35,6 +36,9 @@ export interface InsightsState {
   data: KeewanoInsight | null;
   error: string | null;
   last_attempt: string | null;
+  /** Learning-effect counts from Keewano; null until the override/lessons columns exist there. */
+  learning: LearningCounts | null;
+  learning_error: string | null;
 }
 
 type Log = { info: (o: object, m: string) => void; warn: (o: object, m: string) => void };
@@ -50,7 +54,7 @@ export class KeewanoInsights {
     private log: Log,
     private refreshMs = 60_000,
   ) {
-    this.state = { enabled: client.enabled, status: client.enabled ? "pending" : "disabled", data: null, error: null, last_attempt: null };
+    this.state = { enabled: client.enabled, status: client.enabled ? "pending" : "disabled", data: null, error: null, last_attempt: null, learning: null, learning_error: null };
   }
 
   start() {
@@ -70,6 +74,7 @@ export class KeewanoInsights {
     if (this.inflight) return this.inflight;
     this.inflight = (async () => {
       this.state.last_attempt = new Date().toISOString();
+      void this.refreshLearning();
       const query = `${MEDIAN_SQL};\n${COUNTS_SQL}`;
       try {
         let med: Record<string, unknown>;
@@ -109,5 +114,27 @@ export class KeewanoInsights {
       }
     })();
     return this.inflight;
+  }
+
+  /** Separate statement so the median keeps working even before the learning columns exist in Keewano. */
+  private async refreshLearning(): Promise<void> {
+    try {
+      const o = rowObject(await this.client.sql(LEARNING_SQL, 1));
+      this.state.learning = {
+        cases_scored: num(o.cases_scored) ?? 0,
+        cases_overridden: num(o.cases_overridden) ?? 0,
+        cases_with_lessons: num(o.cases_with_lessons) ?? 0,
+        overridden_with_lessons: num(o.overridden_with_lessons) ?? 0,
+      };
+      this.state.learning_error = null;
+    } catch (e) {
+      const msg = String((e as Error).message);
+      this.state.learning_error = /unknown column/i.test(msg) ? "override/lessons events not in Keewano yet" : msg.slice(0, 160);
+    }
+  }
+
+  /** Awaitable variant for tests and the refresh endpoint. */
+  async refreshAll(): Promise<void> {
+    await Promise.all([this.refresh(), this.refreshLearning()]);
   }
 }
