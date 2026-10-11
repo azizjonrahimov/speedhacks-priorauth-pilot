@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 import { ArrowRight, CheckCircle2, Clock, FilePlus2, Timer, TrendingUp } from 'lucide-react'
-import { useCases, useCompletedCaseDetails, useMetrics } from '@/hooks/useApi'
+import { useCases, useMetrics } from '@/hooks/useApi'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import { Button } from '@/components/ui/button'
@@ -50,25 +50,26 @@ const chartConfig = {
 export function Dashboard() {
   const metrics = useMetrics()
   const cases = useCases()
-  const details = useCompletedCaseDetails(cases.data)
 
   const todayCount = useMemo(() => {
     const today = new Date().toDateString()
     return (cases.data ?? []).filter((c) => new Date(c.created_at).toDateString() === today).length
   }, [cases.data])
 
+  // Per-case staff time comes from CaseSummary.review_seconds (null until review.completed).
   const chart = useMemo(() => {
-    const reviewed = details
-      .map((q) => q.data)
-      .filter((c): c is NonNullable<typeof c> => !!c && !!c.review)
-      .sort((a, b) => a.review!.completed_at.localeCompare(b.review!.completed_at))
+    const reviewed = (cases.data ?? [])
+      .filter((c) => c.review_seconds != null)
+      .sort((a, b) => a.updated_at.localeCompare(b.updated_at))
+    const rows: { name: string; baseline: number; ours: number; saved: number }[] = []
     let cum = 0
-    return reviewed.map((c) => {
-      const ours = Math.round((c.review!.review_seconds / 60) * 10) / 10
+    for (const c of reviewed) {
+      const ours = Math.round((c.review_seconds! / 60) * 10) / 10
       cum += Math.max(0, 24 - ours)
-      return { name: c.patient_name.split(' ')[0] + ' · ' + c.cpt, baseline: 24, ours, saved: Math.round(cum * 10) / 10 }
-    })
-  }, [details])
+      rows.push({ name: c.patient_name.split(' ')[0] + ' · ' + c.cpt, baseline: 24, ours, saved: Math.round(cum * 10) / 10 })
+    }
+    return rows
+  }, [cases.data])
 
   const m = metrics.data
   const decided = (m?.approved ?? 0) + (m?.denied ?? 0) + (m?.pended ?? 0)

@@ -241,6 +241,8 @@ export interface CaseSummary {
   expedited: boolean
   created_at: string
   updated_at: string
+  /** null until review.completed */
+  review_seconds?: number | null
 }
 
 export interface CaseDetail extends CaseSummary {

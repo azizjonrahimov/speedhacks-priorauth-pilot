@@ -65,6 +65,10 @@ async function route(method: string, parts: string[], body: unknown): Promise<un
       case 'review':
         if (sub === 'complete') return store.reviewComplete(id)
         break
+      case 'inquire':
+        return store.inquire(id)
+      case 'close':
+        return store.closeCase(id)
     }
   }
   throw new store.MockHttpError(404, 'not_found', `mock: no handler for ${method} /${parts.join('/')}`)

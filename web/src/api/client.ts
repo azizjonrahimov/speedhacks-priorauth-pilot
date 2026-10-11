@@ -69,6 +69,9 @@ export const api = {
   packet: (id: string) => post<Packet>(`/cases/${id}/packet`),
   submit: (id: string) => post<{ payer: Payer }>(`/cases/${id}/submit`),
   reviewComplete: (id: string) => post<{ review_seconds: number }>(`/cases/${id}/review/complete`),
+  /** Backend extras beyond the plan's contract: poll a pended case for a decision, and close a decided case. */
+  inquire: (id: string) => post<{ payer: Payer; changed: boolean }>(`/cases/${id}/inquire`),
+  close: (id: string) => post<{ case: CaseDetail }>(`/cases/${id}/close`),
   metrics: () => request<Metrics>('/metrics'),
   policies: () => request<{ policies: PolicyListItem[] }>('/policies'),
   demoNotes: () => request<{ notes: DemoNote[] }>('/demo/notes'),

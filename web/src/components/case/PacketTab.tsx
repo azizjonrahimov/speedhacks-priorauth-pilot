@@ -74,6 +74,24 @@ export function PacketTab({ c }: { c: CaseDetail }) {
     onError: (e: Error) => toast.error('Could not complete review', { description: e.message }),
   })
 
+  const inquire = useMutation({
+    mutationFn: () => api.inquire(c.id),
+    onSuccess: (r) => {
+      if (r.changed) toast.success(`Payer decided: ${r.payer.adjudication ?? ''} ${r.payer.status}`)
+      else toast.info('Still pended at the payer', { description: 'No decision yet; try again later.' })
+      invalidate()
+    },
+    onError: (e: Error) => toast.error('Inquiry failed', { description: e.message }),
+  })
+  const close = useMutation({
+    mutationFn: () => api.close(c.id),
+    onSuccess: () => {
+      toast.success('Case closed')
+      invalidate()
+    },
+    onError: (e: Error) => toast.error('Could not close case', { description: e.message }),
+  })
+
   const bundleJson = useMemo(() => (c.packet ? JSON.stringify(c.packet.fhir_bundle, null, 2) : ''), [c.packet])
   const bundleEntries = (c.packet?.fhir_bundle as { entry?: unknown[] } | null)?.entry?.length ?? 0
   const payer = c.payer
@@ -213,6 +231,14 @@ export function PacketTab({ c }: { c: CaseDetail }) {
                   </p>
                 ) : null}
               </AnimatePresence>
+              {payer.status === 'pended' && (
+                <div>
+                  <Button variant="outline" size="sm" onClick={() => inquire.mutate()} disabled={inquire.isPending}>
+                    {inquire.isPending ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <RotateCcw data-icon="inline-start" />}
+                    Check for decision (X12 278 inquiry)
+                  </Button>
+                </div>
+              )}
               {c.notification && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[13px]">
                   <span className="text-muted-foreground">Patient texted ({c.notification.to_masked}):</span> “{c.notification.body}”
@@ -237,6 +263,11 @@ export function PacketTab({ c }: { c: CaseDetail }) {
                   <span className="text-met-fg tabular text-lg font-bold">{Math.round(saved / 60)}m saved</span>
                 </div>
               </div>
+              {c.state !== 'closed' && (
+                <Button variant="outline" size="sm" className="ml-auto" onClick={() => close.mutate()} disabled={close.isPending}>
+                  Close case
+                </Button>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-between gap-3">

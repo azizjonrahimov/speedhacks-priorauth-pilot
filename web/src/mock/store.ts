@@ -85,7 +85,31 @@ function summary(c: CaseDetail): CaseSummary {
     expedited: c.expedited,
     created_at: c.created_at,
     updated_at: c.updated_at,
+    review_seconds: c.review?.review_seconds ?? null,
   }
+}
+
+export function inquire(id: string) {
+  const c = getCase(id)
+  if (c.state !== 'pended' || !c.payer?.reference) throw new MockHttpError(409, 'illegal_transition', 'Only pended cases with a reference can be inquired')
+  // Mock payer decides on the second inquiry.
+  const n = (c.payer.attempts.filter((a) => a.outcome === 'inquiry').length ?? 0) + 1
+  c.payer.attempts.push({ n: c.payer.attempts.length + 1, at: nowIso(), outcome: 'inquiry', ms: 400 })
+  if (n < 2) return { payer: c.payer, changed: false }
+  Object.assign(c.payer, { status: 'approved', adjudication: 'A1', reason: null, responded_at: nowIso() })
+  setState(c, 'approved')
+  emit(c, 'payer.responded', { status: 'approved', adjudication: 'A1', reference: c.payer.reference, reason: null }, 'payer')
+  c.notification = { channel: 'simulated', to_masked: c.patient.phone, sent_at: nowIso(), message_id: null, body: `Good news: ${c.insurer} approved your ${c.cpt_label.toLowerCase()} (ref ${c.payer.reference}).`, reply: null }
+  emit(c, 'patient.notified', { channel: 'simulated', to_masked: c.patient.phone }, 'system')
+  return { payer: c.payer, changed: true }
+}
+
+export function closeCase(id: string) {
+  const c = getCase(id)
+  if (!['approved', 'denied', 'pended'].includes(c.state as string)) throw new MockHttpError(409, 'illegal_transition', `Cannot close a case in state ${c.state}`)
+  setState(c, 'closed')
+  emit(c, 'case.closed', {}, 'staff')
+  return { case: c }
 }
 
 // ---------- operations ----------
