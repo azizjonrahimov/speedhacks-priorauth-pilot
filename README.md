@@ -32,7 +32,7 @@ flowchart LR
 
 Every step writes an event to a ledger. The case view shows that timeline so staff can see exactly what the system did and why.
 
-## The part I care most about: no made up evidence
+## How process works:
 
 An LLM that scores medical criteria will happily invent a sentence that sounds like the note. I did not want that anywhere near a payer submission. So every quote the model returns has to pass two gates before it counts.
 
@@ -70,7 +70,7 @@ sequenceDiagram
     S-->>UI: evidence.rescored over SSE
 ```
 
-One thing the live call taught me. The voice agent said it would also document ibuprofen and rest, which the physician never said. The transcript parser flagged it, the verifier only accepted the physician's own words, and the letter cites only those. That incident is now a stored lesson and the next call script for that policy carries a rule against it. More on that below.
+The voice agent said it would also document ibuprofen and rest, which the physician never said. The transcript parser flagged it, the verifier only accepted the physician's own words, and the letter cites only those. That incident is now a stored lesson and the next call script for that policy carries a rule against it. More on that below.
 
 ## Case lifecycle
 
@@ -100,7 +100,7 @@ stateDiagram-v2
 
 ## It learns from its mistakes
 
-This is the piece that makes it more than a one shot demo. Four kinds of mistakes become lessons, with no engineer involved.
+Our system allows the AI to learn from its past mistakes without outside support. Four kinds of mistakes become lessons, with no engineer involved.
 
 | Source of the lesson | What happened | What changes next time |
 |---|---|---|
@@ -121,7 +121,6 @@ flowchart LR
 
 The first version of a lesson said "look harder for therapy duration". That pushed the model to guess the criterion was met. The code verifier caught it and downgraded it. I rewrote the lesson wording to forbid inference, and on the next case the model got it right by itself. So the loop learns, and the verifier keeps learned pressure from turning into guessing. The honest gap: criteria with no numeric check have no verifier backstop yet.
 
-There is a Lessons page in the app with the table and a short note Claude writes about what it has learned so far.
 
 ## Time saved
 
@@ -213,10 +212,3 @@ Without keys you still get screening, template letters, the mock payer and the w
 
 - `server/` ledger, state machine, rules, evidence pipeline, Dial, packet, payer adapters, Keewano sink, learning loop. `server/RESEARCH.md` has the design decisions I made along the way.
 - `web/` landing, demo auth, dashboard, intake, case view, lessons.
-
-## What I would build next
-
-1. A no inference guard for criteria that have no numeric check.
-2. Make "never say you will document something the physician did not say" a hard rule in the call script rather than a learned one.
-3. Real payer connections beyond the Da Vinci reference server, and a second Dial number so patient texts are real.
-4. Real accounts for reviewers.
