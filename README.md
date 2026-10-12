@@ -6,6 +6,8 @@ PriorAuth Pilot does that loop for them. It reads the visit note, proves every p
 
 Manual prior auth costs about 24 minutes of staff time per request (CAQH Index). With this tool the staff review step takes about 5 minutes. Both numbers are on the dashboard and the second one comes live from Keewano.
 
+The Link: https://priorauth-pilot-web.onrender.com
+
 ## How it works
 
 ```mermaid
