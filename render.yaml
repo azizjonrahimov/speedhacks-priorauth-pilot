@@ -1,0 +1,63 @@
+# Render blueprint: one click deploy of the API and the web app.
+# In Render: New > Blueprint > pick this repo. Fill the secret env vars when prompted.
+#
+# Service names decide the public URLs:
+#   API: https://priorauth-pilot-api.onrender.com
+#   Web: https://priorauth-pilot-web.onrender.com
+# If Render has to rename a service, update VITE_API_URL and CORS_ORIGINS to match and redeploy.
+#
+# Keys: set ANTHROPIC_API_KEY so scoring works. Leave the DIAL_* vars empty on a public demo
+# so visitors cannot place real, billed phone calls; the manual gap fill path still works.
+
+services:
+  - type: web
+    name: priorauth-pilot-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: CORS_ORIGINS
+        value: https://priorauth-pilot-web.onrender.com
+      - key: PAYER_ADAPTER
+        value: mock
+      - key: CHAOS_P500
+        value: "0.3"
+      - key: CHAOS_PPEND
+        value: "0.3"
+      - key: DB_PATH
+        value: ./data/priorauth.db
+      - key: PACKETS_DIR
+        value: ./data/packets
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: KEEWANO_API_KEY
+        sync: false
+      - key: KEEWANO_PAT
+        sync: false
+      - key: DIAL_API_KEY
+        sync: false
+      - key: DIAL_FROM_NUMBER_ID
+        sync: false
+      - key: PHYSICIAN_PHONE
+        sync: false
+
+  - type: web
+    name: priorauth-pilot-web
+    runtime: static
+    rootDir: web
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: VITE_API_URL
+        value: https://priorauth-pilot-api.onrender.com
